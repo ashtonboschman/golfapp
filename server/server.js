@@ -1,4 +1,5 @@
 // server.js
+require("dotenv").config(); // load .env variables
 const express = require('express');
 const cors = require('cors');
 
@@ -11,8 +12,9 @@ app.use(cors({ origin: ["http://localhost:5173"] }));
 
 // Routes
 app.use('/api/users', require('./routes/users'));
-app.use('/api/courses', require('./routes/courses'));
-app.use('/api/rounds', require('./routes/rounds'));
+// Add later:
+// app.use('/api/courses', require('./routes/courses'));
+// app.use('/api/rounds', require('./routes/rounds'));
 
 app.get('/', (req, res) => {
   res.send("Welcome to the golf API server!");

@@ -1,15 +1,49 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+// client/src/App.jsx
+import React from "react";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { AuthProvider, AuthContext } from "./context/AuthContext";
+import PrivateRoute from "./routes/PrivateRoute";
+
+import Navbar from "./components/Navbar";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
+import AddRound from "./pages/AddRound";
+import Courses from "./pages/Courses";
+import Leaderboard from "./pages/Leaderboard";
+import RoundHistory from "./pages/RoundHistory";
+import Profile from "./pages/Profile";
+import Settings from "./pages/Settings";
+
+function HomeRedirect() {
+  const { user } = React.useContext(AuthContext);
+  return user ? <Dashboard /> : <Navigate to="/login" replace />;
+}
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="/" element={<Login />} /> {/* default */}
-        <Route path="/dashboard" element={<Dashboard />} />
-      </Routes>
-    </BrowserRouter>
+    <AuthProvider>
+      <BrowserRouter>
+        <Navbar />
+        <Routes>
+          {/* Login */}
+          <Route path="/login" element={<Login />} />
+
+          {/* Home redirects to dashboard if logged in */}
+          <Route path="/" element={<HomeRedirect />} />
+
+          {/* Dashboard is same as Home */}
+          <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
+          <Route path="/add-round" element={<PrivateRoute><AddRound /></PrivateRoute>} />
+          <Route path="/courses" element={<PrivateRoute><Courses /></PrivateRoute>} />
+          <Route path="/leaderboard" element={<PrivateRoute><Leaderboard /></PrivateRoute>} />
+          <Route path="/round-history" element={<PrivateRoute><RoundHistory /></PrivateRoute>} />
+          <Route path="/profile" element={<PrivateRoute><Profile /></PrivateRoute>} />
+          <Route path="/settings" element={<PrivateRoute><Settings /></PrivateRoute>} />
+
+          {/* Catch-all route: redirect to home */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </BrowserRouter>
+    </AuthProvider>
   );
 }
