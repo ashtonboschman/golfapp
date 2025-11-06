@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useState, useContext } from "react";
 import { useNavigate } from "react-router-dom";
+import { AuthContext } from "../context/AuthContext";
 
 export default function Login() {
   const nav = useNavigate();
+  const { login } = useContext(AuthContext);
   const [isRegister, setIsRegister] = useState(false);
 
   const [form, setForm] = useState({
@@ -11,38 +13,41 @@ export default function Login() {
     password: ""
   });
 
-  function handleChange(e) {
+  const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
-  }
+  };
 
-  async function handleSubmit(e) {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
+    const BASE_URL = "http://localhost:3000";
     const endpoint = isRegister ? "/api/users/register" : "/api/users/login";
 
     try {
-      const res = await fetch(`http://localhost:3000${endpoint}`, {
+      const res = await fetch(`${BASE_URL}${endpoint}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form)
       });
 
       const data = await res.json();
-
-      if (!res.ok) return alert(data.message);
+      if (!res.ok) return alert(data.message || "Server error");
 
       if (!isRegister) {
-        localStorage.setItem("token", data.token || "dummy"); // add token later
+        // store user and token
+        login(data.user);
+        localStorage.setItem("token", data.token); // optional if needed later
         nav("/dashboard");
       } else {
         alert("Registered! You can now login");
         setIsRegister(false);
         setForm({ username: "", email: "", password: "" });
       }
-    } catch {
-      alert("Server error");
+    } catch (err) {
+      console.error("Login/register error:", err);
+      alert("Server error. Check console.");
     }
-  }
+  };
 
   return (
     <div style={{ padding: "40px", maxWidth: "400px", margin: "auto" }}>
@@ -80,15 +85,15 @@ export default function Login() {
         />
         <br /><br />
 
-        <button type="submit">
-          {isRegister ? "Register" : "Login"}
-        </button>
+        <button type="submit">{isRegister ? "Register" : "Login"}</button>
       </form>
 
       <br />
 
       <button onClick={() => setIsRegister(!isRegister)}>
-        {isRegister ? "Already have an account? Login" : "Need an account? Register"}
+        {isRegister
+          ? "Already have an account? Login"
+          : "Need an account? Register"}
       </button>
     </div>
   );

@@ -1,0 +1,59 @@
+1️⃣ Make sure you’re on main
+git checkout main
+git pull
+
+
+Ensures your local main is up-to-date with GitHub.
+
+2️⃣ Create a new branch
+
+Let’s call it feature/dashboard:
+
+git checkout -b feature/dashboard
+
+
+-b creates and switches to the new branch.
+
+Naming convention: feature/<feature-name> keeps branches organized.
+
+3️⃣ Work on your new feature
+
+Any changes you make now (Dashboard page, protected routes, etc.) are isolated from main.
+
+You can safely commit:
+
+git add .
+git commit -m "Add dashboard page placeholder and protected route"
+
+4️⃣ Push your branch to GitHub
+git push -u origin feature/dashboard
+
+
+This creates a remote branch so you can open a Pull Request (PR) later if you want.
+
+✅ Recommended workflow
+
+Feature branches for each new page/feature:
+
+feature/dashboard
+
+feature/add-round
+
+feature/leaderboard
+
+Commit frequently with clear messages.
+
+Merge into main only when the feature is tested and stable:
+
+git checkout main
+git merge feature/dashboard
+git push
+
+
+Delete the branch if no longer needed:
+
+git branch -d feature/dashboard
+git push origin --delete feature/dashboard
+
+
+If you want, I can now create the Dashboard page and a ProtectedRoute component so /dashboard is accessible only after login, and we can commit it directly to this new branch.
