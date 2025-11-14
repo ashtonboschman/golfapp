@@ -7,17 +7,19 @@ import PrivateRoute from "./routes/PrivateRoute";
 import Navbar from "./components/Navbar";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
-import AddRound from "./pages/AddRound";
+import RoundForm from "./pages/RoundForm";
 import Courses from "./pages/Courses";
+import CourseForm from "./pages/CourseForm";
 import Leaderboard from "./pages/Leaderboard";
-import RoundHistory from "./pages/RoundHistory";
+import Rounds from "./pages/Rounds";
 import Profile from "./pages/Profile";
 import Settings from "./pages/Settings";
 
 function HomeRedirect() {
-  const { user } = React.useContext(AuthContext);
-  return user ? <Dashboard /> : <Navigate to="/login" replace />;
+  const { auth } = React.useContext(AuthContext);
+  return auth?.user ? <Dashboard /> : <Navigate to="/login" replace />;
 }
+
 
 export default function App() {
   return (
@@ -33,10 +35,14 @@ export default function App() {
 
           {/* Dashboard is same as Home */}
           <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
-          <Route path="/add-round" element={<PrivateRoute><AddRound /></PrivateRoute>} />
+          <Route path="/rounds" element={<PrivateRoute><Rounds /></PrivateRoute>} />
+          <Route path="/rounds/add" element={<PrivateRoute><RoundForm mode="add" /></PrivateRoute>} />
+          <Route path="/rounds/edit/:id" element={<PrivateRoute><RoundForm mode="edit" /></PrivateRoute>} />
           <Route path="/courses" element={<PrivateRoute><Courses /></PrivateRoute>} />
+          <Route path="/courses/add" element={<PrivateRoute><CourseForm mode="add" /></PrivateRoute>} />
+          <Route path="/courses/edit/:id" element={<PrivateRoute><CourseForm mode="edit" /></PrivateRoute>} />
           <Route path="/leaderboard" element={<PrivateRoute><Leaderboard /></PrivateRoute>} />
-          <Route path="/round-history" element={<PrivateRoute><RoundHistory /></PrivateRoute>} />
+          <Route path="/round-history" element={<PrivateRoute><Rounds /></PrivateRoute>} />
           <Route path="/profile" element={<PrivateRoute><Profile /></PrivateRoute>} />
           <Route path="/settings" element={<PrivateRoute><Settings /></PrivateRoute>} />
 
