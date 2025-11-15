@@ -12,9 +12,9 @@ app.use(cors({ origin: ["http://localhost:5173"] }));
 
 // Routes
 app.use('/api/users', require('./routes/users'));
-// Add later:
-// app.use('/api/courses', require('./routes/courses'));
-// app.use('/api/rounds', require('./routes/rounds'));
+app.use('/api/courses', require('./routes/courses'));
+app.use('/api/rounds', require('./routes/rounds'));
+app.use('/api/dashboard', require('./routes/dashboard'));
 
 app.get('/', (req, res) => {
   res.send("Welcome to the golf API server!");

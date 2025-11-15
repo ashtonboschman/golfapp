@@ -1,0 +1,14 @@
+add course name ot last 5
+collapse menus when routing to page
+avg score first
+look into tee based db model
+add round right in dashboard
+possibly change headings for recent erounds base off of advanced stats
+home course
+best course
+friends.jsx page
+
+settings:
+timezone
+dark/light mode
+home course

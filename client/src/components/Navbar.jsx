@@ -4,7 +4,8 @@ import { Link, useNavigate } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
 
 export default function Navbar() {
-  const { user, logout } = useContext(AuthContext);
+  const { auth, logout } = useContext(AuthContext);
+  const user = auth?.user; // updated from previous "user"
   const navigate = useNavigate();
 
   const [menuOpen, setMenuOpen] = useState(false);
@@ -38,10 +39,9 @@ export default function Navbar() {
           {menuOpen && (
             <div style={styles.menuDropdown}>
               <Link to="/" style={styles.menuItem} onClick={() => setMenuOpen(false)}>Home</Link>
-              <Link to="/add-round" style={styles.menuItem} onClick={() => setMenuOpen(false)}>Add Round</Link>
+              <Link to="/rounds" style={styles.menuItem} onClick={() => setMenuOpen(false)}>Rounds</Link>
               <Link to="/courses" style={styles.menuItem} onClick={() => setMenuOpen(false)}>Courses</Link>
               <Link to="/leaderboard" style={styles.menuItem} onClick={() => setMenuOpen(false)}>Leaderboard</Link>
-              <Link to="/round-history" style={styles.menuItem} onClick={() => setMenuOpen(false)}>Round History</Link>
             </div>
           )}
         </div>

@@ -1,30 +1,31 @@
+// client/src/context/AuthContext.jsx
 import { createContext, useState } from "react";
 
 export const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(() => {
+  const [auth, setAuth] = useState(() => {
     try {
-      const saved = localStorage.getItem("user");
+      const saved = localStorage.getItem("auth");
       return saved ? JSON.parse(saved) : null;
     } catch (err) {
-      console.error("Failed to parse user from localStorage", err);
+      console.error("Failed to parse auth from localStorage", err);
       return null;
     }
   });
 
-  const login = (userData) => {
-    setUser(userData);
-    localStorage.setItem("user", JSON.stringify(userData));
+  const login = ({ user, token }) => {
+    setAuth({ user, token });
+    localStorage.setItem("auth", JSON.stringify({ user, token }));
   };
 
   const logout = () => {
-    setUser(null);
-    localStorage.removeItem("user");
+    setAuth(null);
+    localStorage.removeItem("auth");
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout }}>
+    <AuthContext.Provider value={{ auth, login, logout }}>
       {children}
     </AuthContext.Provider>
   );
