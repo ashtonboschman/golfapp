@@ -7,9 +7,16 @@ const auth = require('../middleware/auth');
 router.get('/', auth, (req, res) => {
   const user_id = req.user.id;
   const sql = `
-    SELECT r.*, c.name AS course_name, c.city, c.holes AS course_holes, c.par AS course_par, c.slope, c.rating
+    SELECT r.*, 
+           c.name AS course_name, 
+           c.tee_id AS course_tee, 
+           c.city, 
+           c.holes AS course_holes, 
+           c.par AS course_par, 
+           c.slope, 
+           c.rating
     FROM rounds r
-    JOIN courses c ON r.course_id = c.id
+    LEFT JOIN courses c ON r.course_id = c.id
     WHERE r.user_id = ?
     ORDER BY r.date DESC
   `;
@@ -24,9 +31,16 @@ router.get('/:id', auth, (req, res) => {
   const roundId = req.params.id;
   const user_id = req.user.id;
   const sql = `
-    SELECT r.*, c.name AS course_name, c.city, c.holes AS course_holes, c.par AS course_par
+    SELECT r.*, 
+           c.name AS course_name, 
+           c.tee_id AS course_tee, 
+           c.city, 
+           c.holes AS course_holes, 
+           c.par AS course_par, 
+           c.slope, 
+           c.rating
     FROM rounds r
-    JOIN courses c ON r.course_id = c.id
+    LEFT JOIN courses c ON r.course_id = c.id
     WHERE r.user_id = ? AND r.id = ?
   `;
   db.query(sql, [user_id, roundId], (err, results) => {
@@ -41,7 +55,6 @@ router.post('/', auth, (req, res) => {
   const user_id = req.user.id;
   const { course_id, date, score, FIR_hit, GIR_hit, putts, penalties, notes } = req.body;
 
-  // Basic validation
   if (!course_id || !score || !date) {
     return res.status(400).json({ error: "course_id, score, and date are required" });
   }
