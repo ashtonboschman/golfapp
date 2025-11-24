@@ -13,7 +13,6 @@ export default function Profile() {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
   const [editing, setEditing] = useState(false);
-
   const [showPasswordForm, setShowPasswordForm] = useState(false);
   const [passwords, setPasswords] = useState({
     currentPassword: "",
@@ -23,12 +22,10 @@ export default function Profile() {
 
   const BASE_URL = "http://localhost:3000";
 
-  // Redirect if not logged in
   useEffect(() => {
     if (!token) navigate("/login", { replace: true });
   }, [token, navigate]);
 
-  // Fetch current user (only sets local state)
   useEffect(() => {
     if (!token) return;
 
@@ -51,7 +48,6 @@ export default function Profile() {
 
         setUsername(data.username || "");
         setEmail(data.email || "");
-        // DO NOT call login here
       } catch (err) {
         console.error("Fetch profile error:", err);
         setMessage(err.message || "Error loading profile");
@@ -63,168 +59,146 @@ export default function Profile() {
     fetchUser();
   }, [token, navigate, logout]);
 
-// Update username
-const handleSave = async (e) => {
-  e.preventDefault();
-  setMessage("");
+  const handleSave = async (e) => {
+    e.preventDefault();
+    setMessage("");
+    if (!username.trim()) return setMessage("❌ Username cannot be empty");
 
-  if (!username.trim()) return setMessage("❌ Username cannot be empty");
+    setLoading(true);
+    try {
+      const res = await fetch(`${BASE_URL}/api/users/update`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ username: username.trim() }),
+      });
 
-  setLoading(true);
-  try {
-    const res = await fetch(`${BASE_URL}/api/users/update`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ username: username.trim() }),
-    });
+      if (res.status === 401 || res.status === 403) {
+        logout();
+        navigate("/login", { replace: true });
+        return;
+      }
 
-    if (res.status === 401 || res.status === 403) {
-      logout();
-      navigate("/login", { replace: true });
-      return;
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Error updating profile");
+
+      setMessage(data.message);
+      setEditing(false);
+      login({
+        user: { ...auth.user, username: data.updatedFields.username || username.trim() },
+        token,
+      });
+    } catch (err) {
+      console.error("Update username error:", err);
+      setMessage(err.message);
+    } finally {
+      setLoading(false);
     }
+  };
 
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.message || "Error updating profile");
+  const handlePasswordChange = async (e) => {
+    e.preventDefault();
+    setMessage("");
+    const { currentPassword, newPassword, confirmPassword } = passwords;
 
-    // Use backend message and updatedFields
-    setMessage(data.message);
-    setEditing(false);
-    login({
-      user: { ...auth.user, username: data.updatedFields.username || username.trim() },
-      token,
-    });
-  } catch (err) {
-    console.error("Update username error:", err);
-    setMessage(err.message);
-  } finally {
-    setLoading(false);
-  }
-};
+    if (!currentPassword || !newPassword || !confirmPassword)
+      return setMessage("❌ All fields are required");
+    if (newPassword !== confirmPassword)
+      return setMessage("❌ New passwords do not match");
 
-// Update password
-const handlePasswordChange = async (e) => {
-  e.preventDefault();
-  setMessage("");
+    setLoading(true);
+    try {
+      const res = await fetch(`${BASE_URL}/api/users/change-password`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ currentPassword, newPassword }),
+      });
 
-  const { currentPassword, newPassword, confirmPassword } = passwords;
-  if (!currentPassword || !newPassword || !confirmPassword)
-    return setMessage("❌ All fields are required");
-  if (newPassword !== confirmPassword)
-    return setMessage("❌ New passwords do not match");
+      if (res.status === 401 || res.status === 403) {
+        logout();
+        navigate("/login", { replace: true });
+        return;
+      }
 
-  setLoading(true);
-  try {
-    const res = await fetch(`${BASE_URL}/api/users/change-password`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ currentPassword, newPassword }),
-    });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Error changing password");
 
-    if (res.status === 401 || res.status === 403) {
-      logout();
-      navigate("/login", { replace: true });
-      return;
+      setMessage(data.message || "✅ Password updated successfully!");
+      setPasswords({ currentPassword: "", newPassword: "", confirmPassword: "" });
+      setShowPasswordForm(false);
+    } catch (err) {
+      console.error("Change password error:", err);
+      setMessage(err.message);
+    } finally {
+      setLoading(false);
     }
+  };
 
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.message || "Error changing password");
-
-    // Use backend message directly
-    setMessage(data.message || "✅ Password updated successfully!");
-    setPasswords({ currentPassword: "", newPassword: "", confirmPassword: "" });
-    setShowPasswordForm(false);
-  } catch (err) {
-    console.error("Change password error:", err);
-    setMessage(err.message);
-  } finally {
-    setLoading(false);
-  }
-};
-
+  const cardStyle = { background: "#fff", padding: "15px", borderRadius: "8px", boxShadow: "0 2px 10px rgba(0,0,0,0.05)" };
+  const inputStyle = { width: "100%", padding: "12px", borderRadius: "6px", border: "1px solid #ccc", boxSizing: "border-box" };
+  const btnStyle = { fontWeight: "bold", borderRadius: "8px", cursor: "pointer", border: "none", padding: "12px", flex: 1 };
+  const saveBtn = { ...btnStyle, backgroundColor: "#2ecc71", color: "#fff" };
+  const cancelBtn = { ...btnStyle, backgroundColor: "#e74c3c", color: "#fff" };
+  const editBtn = { ...btnStyle, backgroundColor: "#3498db", color: "#fff" };
+  const toggleBtn = { ...btnStyle, backgroundColor: "#34495e", color: "#fff" };
+  const messageStyle = { color: message?.startsWith("❌") ? "red" : "green", marginBottom: "12px" };
 
   return (
-    <div style={{ padding: "40px", maxWidth: "600px", margin: "auto" }}>
+    <div style={{ padding: "15px", maxWidth: "100%", margin: "auto" }}>
       <h2>My Profile</h2>
-      {message && <p style={{ color: message.startsWith("❌") ? "red" : "green" }}>{message}</p>}
+      {message && <p style={messageStyle}>{message}</p>}
 
-      <div style={{ background: "#fff", borderRadius: "8px", padding: "20px", boxShadow: "0 2px 10px rgba(0,0,0,0.1)" }}>
-        <form onSubmit={handleSave}>
-          <label style={{ display: "block", marginTop: "10px", fontWeight: "bold" }}>Username:</label>
-          <input
-            type="text"
-            value={username}
-            disabled={!editing}
-            onChange={(e) => setUsername(e.target.value)}
-            style={{ width: "100%", padding: "8px", marginTop: "5px", borderRadius: "4px", border: "1px solid #ccc" }}
-          />
+      <div style={cardStyle}>
+        <form onSubmit={handleSave} style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+          <label>Username:</label>
+          <input type="text" value={username} disabled={!editing} onChange={(e) => setUsername(e.target.value)} style={inputStyle} />
 
-          <label style={{ display: "block", marginTop: "10px", fontWeight: "bold" }}>Email:</label>
-          <input
-            type="email"
-            value={email}
-            disabled
-            style={{ width: "100%", padding: "8px", marginTop: "5px", borderRadius: "4px", border: "1px solid #ccc", backgroundColor: "#f3f3f3" }}
-          />
+          <label>Email:</label>
+          <input type="email" value={email} disabled style={{ ...inputStyle, backgroundColor: "#f3f3f3" }} />
 
-          <div style={{ marginTop: "20px", display: "flex", justifyContent: "flex-end", gap: "10px" }}>
+          <div style={{ display: "flex", gap: "10px", marginTop: "12px" }}>
             {editing ? (
               <>
-                <button
-                  type="button"
-                  onClick={() => { setEditing(false); setUsername(auth.user.username); }}
-                  style={{ backgroundColor: "#e74c3c", color: "#fff", border: "none", padding: "10px 16px", borderRadius: "4px", cursor: "pointer" }}
-                  disabled={loading}
-                >
+                <button type="button" onClick={() => { setEditing(false); setUsername(auth.user.username); }} style={cancelBtn} disabled={loading}>
                   Cancel
                 </button>
-                <button
-                  type="submit"
-                  style={{ backgroundColor: "#2ecc71", color: "#fff", border: "none", padding: "10px 16px", borderRadius: "4px", cursor: "pointer" }}
-                  disabled={loading}
-                >
+                <button type="submit" style={saveBtn} disabled={loading}>
                   {loading ? "Saving..." : "Save Changes"}
                 </button>
               </>
             ) : (
-              <button
-                type="button"
-                onClick={() => setEditing(true)}
-                style={{ backgroundColor: "#3498db", color: "#fff", border: "none", padding: "10px 16px", borderRadius: "4px", cursor: "pointer" }}
-              >
-                Edit Profile
-              </button>
+              <button type="button" onClick={() => setEditing(true)} style={editBtn}>Edit Profile</button>
             )}
           </div>
         </form>
       </div>
 
-      <div style={{ marginTop: "30px", padding: "20px", background: "#fff", borderRadius: "8px", boxShadow: "0 2px 10px rgba(0,0,0,0.05)" }}>
+      <div style={{ ...cardStyle, marginTop: "20px" }}>
         <button
+          type="button"
           onClick={() => { setShowPasswordForm(!showPasswordForm); setPasswords({ currentPassword: "", newPassword: "", confirmPassword: "" }); setMessage(""); }}
-          style={{ backgroundColor: "#34495e", color: "#fff", border: "none", padding: "10px 16px", borderRadius: "4px", cursor: "pointer", width: "100%" }}
+          style={toggleBtn}
         >
           {showPasswordForm ? "Cancel" : "Change Password"}
         </button>
 
         {showPasswordForm && (
-          <form onSubmit={handlePasswordChange} style={{ marginTop: "15px" }}>
-            <label style={{ display: "block", marginTop: "10px", fontWeight: "bold" }}>Current Password:</label>
-            <input type="password" value={passwords.currentPassword} onChange={(e) => setPasswords({ ...passwords, currentPassword: e.target.value })} style={{ width: "100%", padding: "8px", marginTop: "5px", borderRadius: "4px", border: "1px solid #ccc" }} required />
+          <form onSubmit={handlePasswordChange} style={{ display: "flex", flexDirection: "column", gap: "12px", marginTop: "12px" }}>
+            <label>Current Password:</label>
+            <input type="password" value={passwords.currentPassword} onChange={(e) => setPasswords({ ...passwords, currentPassword: e.target.value })} style={inputStyle} required />
 
-            <label style={{ display: "block", marginTop: "10px", fontWeight: "bold" }}>New Password:</label>
-            <input type="password" value={passwords.newPassword} onChange={(e) => setPasswords({ ...passwords, newPassword: e.target.value })} style={{ width: "100%", padding: "8px", marginTop: "5px", borderRadius: "4px", border: "1px solid #ccc" }} required />
+            <label>New Password:</label>
+            <input type="password" value={passwords.newPassword} onChange={(e) => setPasswords({ ...passwords, newPassword: e.target.value })} style={inputStyle} required />
 
-            <label style={{ display: "block", marginTop: "10px", fontWeight: "bold" }}>Confirm New Password:</label>
-            <input type="password" value={passwords.confirmPassword} onChange={(e) => setPasswords({ ...passwords, confirmPassword: e.target.value })} style={{ width: "100%", padding: "8px", marginTop: "5px", borderRadius: "4px", border: "1px solid #ccc" }} required />
+            <label>Confirm New Password:</label>
+            <input type="password" value={passwords.confirmPassword} onChange={(e) => setPasswords({ ...passwords, confirmPassword: e.target.value })} style={inputStyle} required />
 
-            <button type="submit" style={{ backgroundColor: "#2ecc71", color: "#fff", border: "none", padding: "10px 16px", borderRadius: "4px", cursor: "pointer", marginTop: "10px" }} disabled={loading}>
+            <button type="submit" style={saveBtn} disabled={loading}>
               {loading ? "Updating..." : "Update Password"}
             </button>
           </form>

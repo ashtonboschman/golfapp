@@ -27,7 +27,7 @@ const handicapTable = {
   19: { count: 7, adjustment: 0 },
 };
 
-// Corrected Handicap calculation
+// Calculate Handicap
 function calculateHandicap(rounds) {
   if (!rounds || rounds.length < 3) return null;
 
@@ -36,10 +36,9 @@ function calculateHandicap(rounds) {
     let scoreAdj = r.score;
     let ratingAdj = r.rating;
 
-    // Scale 9-hole rounds to 18-hole equivalent
     if (holes === 9) {
-      scoreAdj = r.score * 2;
-      ratingAdj = r.rating * 2;
+      scoreAdj *= 2;
+      ratingAdj *= 2;
       holes = 18;
     }
 
@@ -58,7 +57,6 @@ function calculateHandicap(rounds) {
     handicap += tableEntry.adjustment;
   }
 
-  // Cap at 54 and round to nearest tenth
   return Math.min(Math.round(handicap * 10) / 10, 54.0);
 }
 
@@ -67,34 +65,21 @@ router.get("/", auth, async (req, res) => {
   const userId = req.user.id;
 
   try {
-    // Fetch rounds with course info
+    // Fetch all rounds (not just last 20)
     const roundsQuery = `
       SELECT r.id, r.date, r.score, r.FIR_hit, r.GIR_hit, r.putts, r.penalties,
-             c.FIR_possible AS FIR_total, c.holes AS holes,
-             c.rating, c.slope, c.par
+             c.FIR_possible AS FIR_total, c.holes, c.rating, c.slope, c.par,
+             c.name AS course_name,
+             t.id AS tee_id, t.name AS tee_name
       FROM rounds r
       JOIN courses c ON r.course_id = c.id
+      LEFT JOIN tees t ON c.tee_id = t.id
       WHERE r.user_id = ?
-      ORDER BY r.date DESC
-      LIMIT 20
+      ORDER BY r.date ASC
     `;
     const roundsResult = await new Promise((resolve, reject) => {
       db.query(roundsQuery, [userId], (err, result) => (err ? reject(err) : resolve(result)));
     });
-
-    // Compute last 5 rounds with null safety
-    const last5Rounds = roundsResult.slice(0, 5).map(r => ({
-      ...r,
-      FIR_hit: r.FIR_hit ?? null,
-      FIR_total: r.FIR_total ?? null,
-      FIR_pct: r.FIR_total && r.FIR_hit !== null ? (r.FIR_hit / r.FIR_total) * 100 : null,
-      GIR_hit: r.GIR_hit ?? null,
-      GIR_total: r.holes ?? 18,
-      GIR_pct: r.GIR_total && r.GIR_hit !== null ? (r.GIR_hit / r.GIR_total) * 100 : null,
-      putts: r.putts ?? null,
-      penalties: r.penalties ?? null,
-      holes: r.holes ?? 18,
-    }));
 
     // Overall stats
     const overallStatsQuery = `
@@ -122,7 +107,10 @@ router.get("/", auth, async (req, res) => {
     const GIR_avg = overall.GIR_total_sum ? (overall.GIR_hit_sum / overall.GIR_total_sum) * 100 : null;
 
     const handicap = calculateHandicap(roundsResult);
-    const handicap_message = roundsResult.length < 3 ? "Handicap is not calculated until at least 3 rounds are played." : null;
+    const handicap_message =
+      roundsResult.length < 3
+        ? "Handicap is not calculated until at least 3 rounds are played."
+        : null;
 
     res.json({
       total_rounds: overall.total_rounds ?? 0,
@@ -131,7 +119,23 @@ router.get("/", auth, async (req, res) => {
       average_score: overall.average_score ?? null,
       avg_putts: overall.avg_putts ?? null,
       avg_penalties: overall.avg_penalties ?? null,
-      last_5_rounds: last5Rounds,
+      all_rounds: roundsResult.map((r) => ({
+        id: r.id,
+        date: r.date,
+        score: r.score ?? null,
+        FIR_hit: r.FIR_hit ?? null,
+        FIR_total: r.FIR_total ?? null,
+        GIR_hit: r.GIR_hit ?? null,
+        holes: r.holes ?? 18,
+        rating: r.rating ?? null,
+        slope: r.slope ?? null,
+        par: r.par ?? 72,
+        course_name: r.course_name ?? "-",
+        tee_id: r.tee_id ?? null,
+        tee_name: r.tee_name ?? "-",
+        putts: r.putts ?? null,
+        penalties: r.penalties ?? null,
+      })),
       FIR_avg,
       GIR_avg,
       handicap,

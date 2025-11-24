@@ -1,0 +1,89 @@
+.round-form-page {
+  padding: 15px;
+  max-width: 600px;
+  margin: auto;
+  box-sizing: border-box;
+}
+
+.round-form h2 {
+  font-size: 1.5rem;
+  margin-bottom: 15px;
+}
+
+.round-form-message {
+  margin-bottom: 12px;
+}
+
+.round-form-message.error {
+  color: red;
+}
+
+.round-form-message.success {
+  color: green;
+}
+
+.round-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.round-form input,
+.round-form select,
+.round-form textarea {
+  width: 100%;
+  padding: 12px;
+  font-size: 1rem;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  box-sizing: border-box;
+}
+
+.toggle-btn {
+  font-weight: bold;
+  border-radius: 8px;
+  cursor: pointer;
+  border: none;
+  padding: 8px 12px;
+  background-color: #3498db;
+  color: #fff;
+}
+
+.advanced-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 10px;
+  padding: 15px;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+  background: #fff;
+}
+
+.form-buttons {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.save-btn {
+  flex: 1;
+  font-weight: bold;
+  border-radius: 8px;
+  cursor: pointer;
+  border: none;
+  padding: 12px;
+  background-color: #2ecc71;
+  color: #fff;
+}
+
+.cancel-btn {
+  flex: 1;
+  font-weight: bold;
+  border-radius: 8px;
+  cursor: pointer;
+  border: none;
+  padding: 12px;
+  background-color: #e74c3c;
+  color: #fff;
+}

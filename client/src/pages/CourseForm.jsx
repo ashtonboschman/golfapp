@@ -1,7 +1,7 @@
-// client/src/pages/CourseForm.jsx
 import React, { useEffect, useState, useContext } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
+import "../css/CourseForm.css";
 
 export default function CourseForm({ mode }) {
   const { id } = useParams();
@@ -11,6 +11,7 @@ export default function CourseForm({ mode }) {
 
   const [course, setCourse] = useState({
     name: "",
+    tee_id: "",
     city: "",
     holes: 18,
     par: "",
@@ -18,12 +19,30 @@ export default function CourseForm({ mode }) {
     rating: "",
     FIR_possible: 0,
   });
+  const [tees, setTees] = useState([]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
 
   useEffect(() => {
-    if (!token) navigate("/login");
+    if (!token) navigate("/login", { replace: true });
   }, [token, navigate]);
+
+  useEffect(() => {
+    if (!token) return;
+    const fetchTees = async () => {
+      try {
+        const res = await fetch("http://localhost:3000/api/tees", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message || "Error fetching tees");
+        setTees(data.sort((a, b) => a.id - b.id));
+      } catch (err) {
+        console.error("Fetch tees error:", err);
+      }
+    };
+    fetchTees();
+  }, [token]);
 
   useEffect(() => {
     if (mode === "edit" && id) fetchCourse();
@@ -41,12 +60,13 @@ export default function CourseForm({ mode }) {
 
       setCourse({
         name: data.name || "",
+        tee_id: data.tee_id || "",
         city: data.city || "",
         holes: data.holes || 18,
         par: data.par || "",
         slope: data.slope || "",
         rating: data.rating || "",
-        FIR_possible: data.FIR_possible || 0,
+        FIR_possible: data.FIR_possible ?? 0,
       });
     } catch (err) {
       console.error("Fetch course error:", err);
@@ -58,56 +78,41 @@ export default function CourseForm({ mode }) {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    if (["holes", "FIR_possible", "par", "slope", "rating"].includes(name)) {
-      const num = Number(value);
-      if (!isNaN(num)) setCourse((prev) => ({ ...prev, [name]: num }));
-    } else {
-      setCourse((prev) => ({ ...prev, [name]: value }));
-    }
+    setCourse((prev) => ({
+      ...prev,
+      [name]: ["holes","par","slope","rating","FIR_possible"].includes(name) ? Number(value) : value
+    }));
   };
 
   const validateCourse = () => {
     if (!course.name.trim()) return "❌ Name is required";
+    if (!course.tee_id) return "❌ Tee is required";
     if (!course.city.trim()) return "❌ City is required";
-    if (course.holes !== 9 && course.holes !== 18) return "❌ Holes must be 9 or 18";
-    if (course.par === "" || course.par < 1) return "❌ Par is required and must be positive";
-    if (course.slope === "" || course.slope < 1) return "❌ Slope is required and must be positive";
-    if (course.rating === "" || course.rating < 1) return "❌ Rating is required and must be positive";
-    if (course.FIR_possible < 0 || course.FIR_possible > course.holes)
-      return `❌ FIR_possible must be between 0 and ${course.holes}`;
+    if (![9,18].includes(course.holes)) return "❌ Holes must be 9 or 18";
+    if (!course.par || course.par < 1) return "❌ Par must be positive";
+    if (!course.slope || course.slope < 1) return "❌ Slope must be positive";
+    if (!course.rating || course.rating < 1) return "❌ Rating must be positive";
+    if (course.FIR_possible < 0 || course.FIR_possible > course.holes) return `❌ FIR_possible must be between 0 and ${course.holes}`;
     return null;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setMessage("");
-
-    const validationError = validateCourse();
-    if (validationError) {
-      setMessage(validationError);
-      return;
-    }
+    const error = validateCourse();
+    if (error) return setMessage(error);
 
     setLoading(true);
     try {
-      const url =
-        mode === "add"
-          ? "http://localhost:3000/api/courses"
-          : `http://localhost:3000/api/courses/${id}`;
+      const url = mode === "add" ? "http://localhost:3000/api/courses" : `http://localhost:3000/api/courses/${id}`;
       const method = mode === "add" ? "POST" : "PUT";
-
       const res = await fetch(url, {
         method,
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify(course),
       });
-
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Error saving course");
-
       setMessage(data.message || "✅ Course saved successfully!");
       setTimeout(() => navigate("/courses"), 1000);
     } catch (err) {
@@ -119,91 +124,47 @@ export default function CourseForm({ mode }) {
   };
 
   return (
-    <div style={{ padding: "40px", maxWidth: "600px", margin: "auto" }}>
+    <div className="course-form-page">
       <h2>{mode === "add" ? "Add Course" : "Edit Course"}</h2>
+
       {message && (
-        <p style={{ color: message.startsWith("❌") ? "red" : "green" }}>{message}</p>
+        <p className={`course-form-message ${message.startsWith("❌") ? "error" : "success"}`}>
+          {message}
+        </p>
       )}
 
-      <form
-        onSubmit={handleSubmit}
-        style={{ display: "flex", flexDirection: "column", gap: "12px" }}
-      >
-        <label>
-          Name:
-          <input type="text" name="name" value={course.name} onChange={handleChange} required />
-        </label>
+      <form className="course-form" onSubmit={handleSubmit}>
+        <label>Name</label>
+        <input type="text" name="name" value={course.name} onChange={handleChange} required />
 
-        <label>
-          City:
-          <input type="text" name="city" value={course.city} onChange={handleChange} />
-        </label>
+        <label>Tee</label>
+        <select name="tee_id" value={course.tee_id} onChange={handleChange} required>
+          <option value="">-- Select Tee --</option>
+          {tees.map((tee) => (
+            <option key={tee.id} value={tee.id}>{tee.name}</option>
+          ))}
+        </select>
 
-        <label>
-          Holes:
-          <select name="holes" value={course.holes} onChange={handleChange}>
-            <option value={9}>9</option>
-            <option value={18}>18</option>
-          </select>
-        </label>
+        <label>City</label>
+        <input type="text" name="city" value={course.city} onChange={handleChange} />
 
-        <label>
-          Par:
-          <input type="number" name="par" value={course.par} onChange={handleChange} required />
-        </label>
+        <label>Holes</label>
+        <select name="holes" value={course.holes} onChange={handleChange}>
+          {[9,18].map(h => <option key={h} value={h}>{h}</option>)}
+        </select>
 
-        <label>
-          Slope:
-          <input type="number" name="slope" value={course.slope} onChange={handleChange} required />
-        </label>
+        {["par","slope","rating","FIR_possible"].map(field => (
+          <div key={field}>
+            <label>{field === "FIR_possible" ? "FIR Possible" : field.charAt(0).toUpperCase()+field.slice(1)}</label>
+            <input type="number" name={field} value={course[field]} min={field==="FIR_possible"?0:1} max={field==="FIR_possible"?course.holes:undefined} onChange={handleChange}/>
+          </div>
+        ))}
 
-        <label>
-          Rating:
-          <input type="number" name="rating" value={course.rating} onChange={handleChange} required />
-        </label>
-
-        <label>
-          FIR Possible:
-          <input
-            type="number"
-            name="FIR_possible"
-            value={course.FIR_possible}
-            onChange={handleChange}
-            min={0}
-            max={course.holes}
-            required
-          />
-        </label>
-
-        <div style={{ display: "flex", gap: "10px" }}>
-          <button
-            type="submit"
-            disabled={loading}
-            style={{
-              padding: "8px 16px",
-              backgroundColor: "#2ecc71",
-              color: "#fff",
-              border: "none",
-              borderRadius: "4px",
-              cursor: "pointer",
-            }}
-          >
-            {loading ? (mode === "add" ? "Adding..." : "Updating...") : (mode === "add" ? "Add Course" : "Update Course")}
+        <div className="course-form-buttons">
+          <button type="submit" disabled={loading} className="course-form-button save">
+            {loading ? (mode==="add"?"Adding...":"Updating...") : (mode==="add"?"Add Course":"Update Course")}
           </button>
-          <button
-            type="button"
-            onClick={() => navigate("/courses")}
-            style={{
-              padding: "8px 16px",
-              backgroundColor: "#e74c3c",
-              color: "#fff",
-              border: "none",
-              borderRadius: "4px",
-              cursor: "pointer",
-            }}
-          >
-            Cancel
-          </button>
+          <button type="button" onClick={()=>navigate("/courses")} className="course-form-button cancel">Cancel</button>
         </div>
       </form>
     </div>

@@ -13,6 +13,7 @@ app.use(cors({ origin: ["http://localhost:5173"] }));
 // Routes
 app.use('/api/users', require('./routes/users'));
 app.use('/api/courses', require('./routes/courses'));
+app.use('/api/tees', require('./routes/tees'));
 app.use('/api/rounds', require('./routes/rounds'));
 app.use('/api/dashboard', require('./routes/dashboard'));
 

@@ -1,11 +1,10 @@
-// client/src/components/Navbar.jsx
 import { useState, useContext, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
 
 export default function Navbar() {
   const { auth, logout } = useContext(AuthContext);
-  const user = auth?.user; // updated from previous "user"
+  const user = auth?.user;
   const navigate = useNavigate();
 
   const [menuOpen, setMenuOpen] = useState(false);
@@ -14,7 +13,18 @@ export default function Navbar() {
 
   const handleLogout = () => {
     logout();
+    closeMenus();
     navigate("/login");
+  };
+
+  const closeMenus = () => {
+    setMenuOpen(false);
+    setProfileOpen(false);
+  };
+
+  const handleNavigate = (path) => {
+    closeMenus();
+    navigate(path);
   };
 
   // Close profile dropdown when clicking outside
@@ -38,10 +48,10 @@ export default function Navbar() {
           </button>
           {menuOpen && (
             <div style={styles.menuDropdown}>
-              <Link to="/" style={styles.menuItem} onClick={() => setMenuOpen(false)}>Home</Link>
-              <Link to="/rounds" style={styles.menuItem} onClick={() => setMenuOpen(false)}>Rounds</Link>
-              <Link to="/courses" style={styles.menuItem} onClick={() => setMenuOpen(false)}>Courses</Link>
-              <Link to="/leaderboard" style={styles.menuItem} onClick={() => setMenuOpen(false)}>Leaderboard</Link>
+              <button style={styles.menuItem} onClick={() => handleNavigate("/")}>Home</button>
+              <button style={styles.menuItem} onClick={() => handleNavigate("/rounds")}>Rounds</button>
+              <button style={styles.menuItem} onClick={() => handleNavigate("/courses")}>Courses</button>
+              <button style={styles.menuItem} onClick={() => handleNavigate("/leaderboard")}>Leaderboard</button>
             </div>
           )}
         </div>
@@ -50,7 +60,7 @@ export default function Navbar() {
       {/* Logo → Clickable Home link */}
       <h1
         style={{ ...styles.logo, cursor: "pointer" }}
-        onClick={() => navigate("/")}
+        onClick={() => handleNavigate("/")}
       >
         GolfApp ⛳
       </h1>
@@ -63,9 +73,9 @@ export default function Navbar() {
           </button>
           {profileOpen && (
             <div style={styles.profileDropdown}>
-              <Link to="/profile" style={styles.profileItem} onClick={() => setProfileOpen(false)}>Profile</Link>
-              <Link to="/settings" style={styles.profileItem} onClick={() => setProfileOpen(false)}>Settings</Link>
-              <button onClick={handleLogout} style={styles.profileItem}>Logout</button>
+              <button style={styles.profileItem} onClick={() => handleNavigate("/profile")}>Profile</button>
+              <button style={styles.profileItem} onClick={() => handleNavigate("/settings")}>Settings</button>
+              <button style={styles.profileItem} onClick={handleLogout}>Logout</button>
             </div>
           )}
         </div>
@@ -85,16 +95,8 @@ const styles = {
     position: "relative",
     zIndex: 100,
   },
-  hamburgerContainer: {
-    position: "relative",
-  },
-  hamburgerButton: {
-    background: "none",
-    border: "none",
-    color: "#fff",
-    fontSize: "24px",
-    cursor: "pointer",
-  },
+  hamburgerContainer: { position: "relative" },
+  hamburgerButton: { background: "none", border: "none", color: "#fff", fontSize: "24px", cursor: "pointer" },
   menuDropdown: {
     position: "absolute",
     top: "100%",
@@ -119,19 +121,9 @@ const styles = {
     textAlign: "left",
     cursor: "pointer",
   },
-  logo: {
-    margin: 0,
-  },
-  profileContainer: {
-    position: "relative",
-  },
-  profileButton: {
-    background: "none",
-    border: "none",
-    color: "#fff",
-    cursor: "pointer",
-    fontSize: "16px",
-  },
+  logo: { margin: 0 },
+  profileContainer: { position: "relative" },
+  profileButton: { background: "none", border: "none", color: "#fff", cursor: "pointer", fontSize: "16px" },
   profileDropdown: {
     position: "absolute",
     top: "100%",
