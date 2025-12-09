@@ -1,21 +1,12 @@
-import { useMemo } from "react";
-import "../css/Card.css";
+import "../css/RoundCard.css";
 
 export default function RoundCard({
   round,
-  tees = [],
   showAdvanced = false,
   onEdit,
   onDelete,
-  showActions = true, // NEW PROP
+  showActions = true,
 }) {
-  // Tee
-  const tee = useMemo(() => tees.find((t) => t.id === round.course_tee), [
-    round.course_tee,
-    tees,
-  ]);
-  const teeName = tee?.name || "default";
-
   // Formatters
   const formatValue = (val) =>
     val !== null && val !== undefined && val !== "" ? val : "-";
@@ -35,17 +26,21 @@ export default function RoundCard({
           year: "numeric",
         });
 
-  // Use the par passed in from the round (already corrected for combined mode)
-  const par = round.par ?? round.course_par ?? tee?.par ?? null;
+  // Tee tag
+  const teeName = round.tee_name || "default";
+
+  // Use par from round as provided
+  const par = round.par ?? null;
 
   return (
     <div className="card">
       {/* Header */}
       <div className="card-header">
         <div className="card-left-header">
-          <h3>{round.course_name || "-"}</h3>
+          <h3 className="course-name">{round.course_name || "-"}</h3>
+          <h5 className="course-city">{round.city || "-"}</h5>
 
-          <div className="card-header-info">
+          <div className="card-header-info tight-header-info">
             <span className={`tee-tag tee-${teeName.toLowerCase()}`}>
               {teeName}
             </span>
@@ -53,10 +48,13 @@ export default function RoundCard({
           </div>
         </div>
 
-        {/* Edit/Delete - only render if showActions is true */}
+        {/* Edit/Delete */}
         {showActions && (
           <div className="button-group">
-            <button onClick={() => onEdit(round.id)} className="button edit-button">
+            <button
+              onClick={() => onEdit(round.id)}
+              className="button edit-button"
+            >
               Edit
             </button>
             <button
@@ -74,11 +72,9 @@ export default function RoundCard({
         <div className="card-info-row">
           <strong>To Par:</strong> {formatToPar(round.score, par)}
         </div>
-
         <div className="card-info-row">
           <strong>Score:</strong> {formatValue(round.score)}
         </div>
-        
         <div className="card-info-row">
           <strong>Par:</strong> {formatValue(par)}
         </div>
@@ -86,17 +82,14 @@ export default function RoundCard({
         {showAdvanced && (
           <>
             <div className="card-info-row">
-              <strong>FIR Hit:</strong> {formatValue(round.FIR_hit)}
+              <strong>FIR Hit:</strong> {formatValue(round.fir_hit)}
             </div>
-
             <div className="card-info-row">
-              <strong>GIR Hit:</strong> {formatValue(round.GIR_hit)}
+              <strong>GIR Hit:</strong> {formatValue(round.gir_hit)}
             </div>
-
             <div className="card-info-row">
               <strong>Putts:</strong> {formatValue(round.putts)}
             </div>
-
             <div className="card-info-row">
               <strong>Penalties:</strong> {formatValue(round.penalties)}
             </div>

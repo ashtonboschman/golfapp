@@ -1,6 +1,6 @@
 import { useContext, useEffect, useState } from "react";
-import { AuthContext } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
+import { AuthContext } from "../context/AuthContext";
 import RoundCard from "../components/RoundCard";
 import {
   LineChart,
@@ -31,8 +31,8 @@ export default function Dashboard() {
     worst_score: null,
     average_score: null,
     all_rounds: [],
-    FIR_avg: null,
-    GIR_avg: null,
+    fir_avg: null,
+    gir_avg: null,
     avg_putts: null,
     avg_penalties: null,
   });
@@ -49,10 +49,12 @@ export default function Dashboard() {
         const res = await fetch(`${BASE_URL}/api/dashboard`, {
           headers: { Authorization: `Bearer ${token}` },
         });
+
         if (res.status === 401 || res.status === 403) {
           logout();
           return navigate("/login", { replace: true });
         }
+
         const data = await res.json();
         setStats({
           handicap: data.handicap ?? null,
@@ -62,8 +64,8 @@ export default function Dashboard() {
           worst_score: data.worst_score != null ? Number(data.worst_score) : null,
           average_score: data.average_score != null ? Number(data.average_score) : null,
           all_rounds: Array.isArray(data.all_rounds) ? data.all_rounds : [],
-          FIR_avg: data.FIR_avg ?? null,
-          GIR_avg: data.GIR_avg ?? null,
+          fir_avg: data.fir_avg ?? null,
+          gir_avg: data.gir_avg ?? null,
           avg_putts: data.avg_putts ?? null,
           avg_penalties: data.avg_penalties ?? null,
         });
@@ -80,6 +82,7 @@ export default function Dashboard() {
   // --- FETCH TEES ---
   useEffect(() => {
     if (!token) return;
+
     const fetchTees = async () => {
       try {
         const res = await fetch(`${BASE_URL}/api/tees`, {
@@ -92,11 +95,13 @@ export default function Dashboard() {
         console.error("Fetch tees error:", err);
       }
     };
+
     fetchTees();
   }, [token]);
 
   if (loading) return <p className="loading-text">Loading dashboard...</p>;
 
+  // --- FORMATTERS ---
   const formatNumber = (num) => (num == null ? "-" : num % 1 === 0 ? num : num.toFixed(1));
   const formatPercent = (num) => (num == null ? "-" : `${num.toFixed(1)}%`);
   const formatDate = (dateStr) =>
@@ -119,45 +124,47 @@ export default function Dashboard() {
       id: r.id,
       date: r.date,
       score: r.score != null ? Number(r.score) : null,
-      FIR_hit: r.FIR_hit != null ? Number(r.FIR_hit) : null,
-      FIR_total: r.FIR_total != null ? Number(r.FIR_total) : (r.holes || 18), // default to holes
-      GIR_hit: r.GIR_hit != null ? Number(r.GIR_hit) : null,
-      GIR_total: r.GIR_total != null ? Number(r.GIR_total) : (r.holes || 18), // default to holes
+      fir_hit: r.fir_hit != null ? Number(r.fir_hit) : null,
+      fir_total: r.fir_total != null ? Number(r.fir_total) : null,
+      gir_hit: r.gir_hit != null ? Number(r.gir_hit) : null,
+      gir_total: r.gir_total != null ? Number(r.gir_total) : null,
       putts: r.putts != null ? Number(r.putts) : null,
       penalties: r.penalties != null ? Number(r.penalties) : null,
       holes: r.holes != null ? Number(r.holes) : 18,
       rating: r.rating != null ? Number(r.rating) : null,
       slope: r.slope != null ? Number(r.slope) : null,
-      course_name: r.course_name ?? "-",
-      course_tee: r.tee_id ?? null,
-      tee_name: r.tee_name ?? "-",
       par: r.par != null ? Number(r.par) : null,
+      course_name: r.course?.course_name ?? "-",
+      club_name: r.course?.club_name ?? "-",
+      city: r.course?.city ?? "-",
+      tee_id: r.tee?.tee_id ?? null,
+      tee_name: r.tee?.tee_name ?? "-",
       notes: r.notes ?? null,
     }))
-    .filter((r) => (statsMode === "9" ? r.holes === 9 : statsMode === "18" ? r.holes === 18 : true))
+    .filter((r) =>
+      statsMode === "9" ? r.holes === 9 : statsMode === "18" ? r.holes === 18 : true
+    )
     .map((r) =>
       statsMode === "combined" && r.holes === 9
         ? {
             ...r,
             score: r.score != null ? r.score * 2 : null,
-            FIR_hit: r.FIR_hit != null ? r.FIR_hit * 2 : null,
-            FIR_total: r.FIR_total != null ? r.FIR_total * 2 : null,
-            GIR_hit: r.GIR_hit != null ? r.GIR_hit * 2 : null,
-            GIR_total: r.GIR_total != null ? r.GIR_total * 2 : null,
+            fir_hit: r.fir_hit != null ? r.fir_hit * 2 : null,
+            fir_total: r.fir_total != null ? r.fir_total * 2 : null,
+            gir_hit: r.gir_hit != null ? r.gir_hit * 2 : null,
+            gir_total: r.gir_total != null ? r.gir_total * 2 : null,
             putts: r.putts != null ? r.putts * 2 : null,
             penalties: r.penalties != null ? r.penalties * 2 : null,
             holes: 18,
+            rating: r.rating != null ? r.rating * 2 : null,
+            par: r.par != null ? r.par * 2 : null,
           }
         : r
     );
 
-  // --- SORT ROUNDS MOST RECENT FIRST ---
   const sortedRounds = [...normalizeRounds].sort((a, b) => new Date(b.date) - new Date(a.date));
-
-  // --- LAST 5 ROUNDS ---
   const lastRounds = sortedRounds.slice(0, 5);
 
-  // --- TOTAL ROUNDS ---
   const totalRounds =
     statsMode === "9"
       ? normalizeRounds.filter((r) => r.holes === 9).length
@@ -165,36 +172,46 @@ export default function Dashboard() {
       ? normalizeRounds.filter((r) => r.holes === 18).length
       : normalizeRounds.length;
 
-  // --- CALCULATE AVERAGES ---
-  const firRounds = normalizeRounds.filter((r) => r.FIR_hit != null && r.FIR_total != null);
-  const FIR_avg =
-    firRounds.length > 0
-      ? (firRounds.reduce((sum, r) => sum + r.FIR_hit, 0) / firRounds.reduce((sum, r) => sum + r.FIR_total, 0)) * 100
-      : null;
+  // --- ADVANCED STATS ---
+  const firRounds = normalizeRounds.filter((r) => r.fir_hit != null && r.fir_total != null);
+  const girRounds = normalizeRounds.filter((r) => r.gir_hit != null && r.gir_total != null);
+  const puttsRounds = normalizeRounds.filter((r) => r.putts != null);
+  const penaltiesRounds = normalizeRounds.filter((r) => r.penalties != null);
 
-  const girRounds = normalizeRounds.filter((r) => r.GIR_hit != null);
-  const GIR_avg =
-    girRounds.length > 0
-      ? (girRounds.reduce((sum, r) => sum + r.GIR_hit, 0) / girRounds.reduce((sum, r) => sum + r.GIR_total, 0)) * 100
-      : null;
+  const fir_avg = firRounds.length
+    ? (firRounds.reduce((sum, r) => sum + r.fir_hit, 0) /
+        firRounds.reduce((sum, r) => sum + r.fir_total, 0)) *
+      100
+    : null;
 
-  const avgPutts =
-    normalizeRounds.filter((r) => r.putts != null).reduce((sum, r) => sum + r.putts, 0) /
-      normalizeRounds.filter((r) => r.putts != null).length || null;
+  const gir_avg = girRounds.length
+    ? (girRounds.reduce((sum, r) => sum + r.gir_hit, 0) /
+        girRounds.reduce((sum, r) => sum + r.gir_total, 0)) *
+      100
+    : null;
 
-  const avgPenalties =
-    normalizeRounds.filter((r) => r.penalties != null).reduce((sum, r) => sum + r.penalties, 0) /
-      normalizeRounds.filter((r) => r.penalties != null).length || null;
+  const avgPutts = puttsRounds.length
+    ? puttsRounds.reduce((sum, r) => sum + r.putts, 0) / puttsRounds.length
+    : null;
 
-  // --- TREND DATA (most recent on the right) ---
+  const avgPenalties = penaltiesRounds.length
+    ? penaltiesRounds.reduce((sum, r) => sum + r.penalties, 0) / penaltiesRounds.length
+    : null;
+
+  // --- TREND DATA (handles 9-hole doubling in combined mode) ---
   const trendData = [...lastRounds]
     .sort((a, b) => new Date(a.date) - new Date(b.date))
-    .map((r) => ({
-      date: r.date,
-      score: r.score,
-      FIR_pct: r.FIR_hit != null && r.FIR_total != null ? (r.FIR_hit / r.FIR_total) * 100 : null,
-      GIR_pct: r.GIR_hit != null && r.GIR_total != null ? (r.GIR_hit / r.GIR_total) * 100 : null,
-    }));
+    .map((r) => {
+      const multiplier = statsMode === "combined" && r.holes === 18 && r.score % 2 === 0 ? 1 : 1;
+      return {
+        date: r.date,
+        score: r.score,
+        fir_pct:
+          r.fir_hit != null && r.fir_total != null ? (r.fir_hit / r.fir_total) * 100 : null,
+        gir_pct:
+          r.gir_hit != null && r.gir_total != null ? (r.gir_hit / r.gir_total) * 100 : null,
+      };
+    });
 
   const scores = trendData.map((d) => d.score).filter((v) => v != null);
   const yMin = scores.length ? Math.floor(Math.min(...scores) / 10) * 10 : 0;
@@ -204,7 +221,10 @@ export default function Dashboard() {
     <div className="dashboard-container">
       <h2>My Dashboard</h2>
 
-      <button className="add-round-btn" onClick={() => navigate("/rounds/add", { state: { from: "/dashboard" } })}>
+      <button
+        className="add-round-btn"
+        onClick={() => navigate("/rounds/add", { state: { from: "/dashboard" } })}
+      >
         + Add Round
       </button>
 
@@ -227,13 +247,26 @@ export default function Dashboard() {
         ))}
       </div>
 
-      {statsMode === "combined" && <p className="combined-note">9-hole rounds are doubled to approximate 18-hole stats.</p>}
+      {statsMode === "combined" && (
+        <p className="combined-note">9-hole rounds are doubled to approximate 18-hole stats.</p>
+      )}
 
       <div className="basic-stats-grid">
         {[
-          ["Average Score", normalizeRounds.length ? normalizeRounds.reduce((sum, r) => sum + (r.score || 0), 0) / normalizeRounds.length : null],
-          ["Best Score", normalizeRounds.length ? Math.min(...normalizeRounds.map((r) => r.score)) : null],
-          ["Worst Score", normalizeRounds.length ? Math.max(...normalizeRounds.map((r) => r.score)) : null],
+          [
+            "Average Score",
+            normalizeRounds.length
+              ? normalizeRounds.reduce((sum, r) => sum + (r.score || 0), 0) / normalizeRounds.length
+              : null,
+          ],
+          [
+            "Best Score",
+            normalizeRounds.length ? Math.min(...normalizeRounds.map((r) => r.score)) : null,
+          ],
+          [
+            "Worst Score",
+            normalizeRounds.length ? Math.max(...normalizeRounds.map((r) => r.score)) : null,
+          ],
           ["Total Rounds", totalRounds],
         ].map(([label, val]) => (
           <div className="stat-card" key={label}>
@@ -250,7 +283,13 @@ export default function Dashboard() {
         ) : (
           <div className="rounds-list">
             {lastRounds.map((round) => (
-              <RoundCard key={round.id} round={round} tees={tees} showAdvanced={showAdvanced} showActions={false} />
+              <RoundCard
+                key={round.id}
+                round={round}
+                tees={tees}
+                showAdvanced={showAdvanced}
+                showActions={false}
+              />
             ))}
           </div>
         )}
@@ -278,8 +317,8 @@ export default function Dashboard() {
         <>
           <div className="advanced-stats-grid">
             {[
-              ["FIR %", FIR_avg],
-              ["GIR %", GIR_avg],
+              ["FIR %", fir_avg],
+              ["GIR %", gir_avg],
               ["Putts / Round", avgPutts],
               ["Penalties / Round", avgPenalties],
             ].map(([label, val]) => (
@@ -297,10 +336,27 @@ export default function Dashboard() {
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="date" tickFormatter={formatDate} />
                 <YAxis domain={[0, 100]} />
-                <Tooltip labelFormatter={formatDate} formatter={(v) => (v != null ? formatPercent(v) : "-")} />
+                <Tooltip
+                  labelFormatter={formatDate}
+                  formatter={(v) => (v != null ? formatPercent(v) : "-")}
+                />
                 <Legend />
-                <Line type="monotone" dataKey="FIR_pct" name="FIR %" stroke="#8884d8" dot={{ r: 3 }} connectNulls />
-                <Line type="monotone" dataKey="GIR_pct" name="GIR %" stroke="#82ca9d" dot={{ r: 3 }} connectNulls />
+                <Line
+                  type="monotone"
+                  dataKey="fir_pct"
+                  name="FIR %"
+                  stroke="#8884d8"
+                  dot={{ r: 3 }}
+                  connectNulls
+                />
+                <Line
+                  type="monotone"
+                  dataKey="gir_pct"
+                  name="GIR %"
+                  stroke="#82ca9d"
+                  dot={{ r: 3 }}
+                  connectNulls
+                />
               </LineChart>
             </ResponsiveContainer>
           </div>

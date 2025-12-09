@@ -35,6 +35,7 @@
   margin: 0;
   font-size: 1rem;
   word-break: break-word;
+  gap: 2px;
 }
 
 /* Header info container (tees, dates) */
@@ -49,6 +50,25 @@
   font-size: 0.75rem;
   color: #555;
 }
+
+/* Tighter spacing between course name, city, and tee/date */
+.course-name {
+  margin: 0;
+  line-height: 1.15;
+}
+
+.course-city {
+  margin: -2px 0 0 0; /* pulls city up closer to course name */
+  font-size: 0.85rem;
+  color: #444;
+  line-height: 1.1;
+}
+
+.tight-header-info {
+  margin-top: 2px; /* reduces space before tee/date */
+  gap: 4px; /* slightly tighter than default */
+}
+
 
 /* ============================
    Info Grid
@@ -126,5 +146,7 @@
 .tee-white { background-color: #ffffff; color: #000; border: 1px solid #ccc; }
 .tee-blue { background-color: #1e90ff; color: white; }
 .tee-black { background-color: #000; color: white; }
-.tee-gold { background-color: #f1c40f; color: #000; }
+.tee-gold { background-color: #a79037; color: #000; }
+.tee-green { background-color: #177c17; color: white; }
+.tee-yellow { background-color: #facb10; color: #000; }
 .tee-default { background-color: #888; color: white; }

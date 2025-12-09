@@ -9,7 +9,6 @@ import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import RoundForm from "./pages/RoundForm";
 import Courses from "./pages/Courses";
-import CourseForm from "./pages/CourseForm";
 import Leaderboard from "./pages/Leaderboard";
 import Rounds from "./pages/Rounds";
 import Profile from "./pages/Profile";
@@ -39,8 +38,6 @@ export default function App() {
           <Route path="/rounds/add" element={<PrivateRoute><RoundForm mode="add" /></PrivateRoute>} />
           <Route path="/rounds/edit/:id" element={<PrivateRoute><RoundForm mode="edit" /></PrivateRoute>} />
           <Route path="/courses" element={<PrivateRoute><Courses /></PrivateRoute>} />
-          <Route path="/courses/add" element={<PrivateRoute><CourseForm mode="add" /></PrivateRoute>} />
-          <Route path="/courses/edit/:id" element={<PrivateRoute><CourseForm mode="edit" /></PrivateRoute>} />
           <Route path="/leaderboard" element={<PrivateRoute><Leaderboard /></PrivateRoute>} />
           <Route path="/round-history" element={<PrivateRoute><Rounds /></PrivateRoute>} />
           <Route path="/profile" element={<PrivateRoute><Profile /></PrivateRoute>} />

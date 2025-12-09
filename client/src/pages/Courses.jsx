@@ -1,4 +1,4 @@
-import { useContext, useEffect, useState, useCallback } from "react";
+import { useContext, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
 import CourseCard from "../components/CourseCard";
@@ -10,8 +10,10 @@ export default function Courses() {
   const navigate = useNavigate();
 
   const [courses, setCourses] = useState([]);
+  const [filteredCourses, setFilteredCourses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
+  const [search, setSearch] = useState("");
 
   const BASE_URL = "http://localhost:3000";
 
@@ -25,6 +27,22 @@ export default function Courses() {
     if (token) fetchCourses();
   }, [token]);
 
+  // Filter courses based on search
+  useEffect(() => {
+    if (search.trim() === "") {
+      setFilteredCourses(courses);
+    } else {
+      const lower = search.toLowerCase();
+      setFilteredCourses(
+        courses.filter(
+          (c) =>
+            c.course_name.toLowerCase().includes(lower) ||
+            (c.location?.city || "").toLowerCase().includes(lower)
+        )
+      );
+    }
+  }, [search, courses]);
+
   const fetchCourses = async () => {
     setLoading(true);
     setMessage("");
@@ -33,13 +51,18 @@ export default function Courses() {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      if (res.status === 401 || res.status === 403) return handleUnauthorized();
+      if (res.status === 401 || res.status === 403) {
+        logout();
+        return navigate("/login", { replace: true });
+      }
 
       const data = await res.json();
       if (!Array.isArray(data)) throw new Error("Invalid data received from server");
 
       setCourses(data);
-      if (data.length === 0) setMessage("No courses found. Add your first course!");
+      setFilteredCourses(data);
+
+      if (data.length === 0) setMessage("No courses found.");
     } catch (err) {
       console.error("Fetch error:", err);
       setMessage(err.message || "Error fetching courses");
@@ -47,33 +70,6 @@ export default function Courses() {
       setLoading(false);
     }
   };
-
-  const handleUnauthorized = () => {
-    logout();
-    navigate("/login", { replace: true });
-  };
-
-  const handleDelete = useCallback(
-    async (courseId) => {
-      if (!window.confirm("Are you sure you want to delete this course?")) return;
-
-      try {
-        const res = await fetch(`${BASE_URL}/api/courses/${courseId}`, {
-          method: "DELETE",
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.message || "Error deleting course");
-
-        setMessage(data.message || "✅ Course deleted!");
-        setCourses((prev) => prev.filter((c) => c.id !== courseId));
-      } catch (err) {
-        console.error("Delete course error:", err);
-        setMessage(err.message || "Error deleting course");
-      }
-    },
-    [token]
-  );
 
   return (
     <div className="courses-page">
@@ -85,25 +81,27 @@ export default function Courses() {
         </p>
       )}
 
-      <button
-        className="courses-add-btn"
-        onClick={() => navigate("/courses/add")}
-      >
-        + Add Course
-      </button>
+      {/* Search bar */}
+      <input
+        type="text"
+        placeholder="Search by Course or City..."
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        className="courses-search"
+      />
 
       {loading ? (
         <p>Loading courses...</p>
-      ) : courses.length === 0 ? (
-        <p>No courses available. Please add a course.</p>
+      ) : filteredCourses.length === 0 ? (
+        <p>No courses match your search.</p>
       ) : (
         <div className="courses-grid">
-          {courses.map((course) => (
+          {filteredCourses.map((course) => (
             <CourseCard
               key={course.id}
               course={course}
-              onEdit={(id) => navigate(`/courses/edit/${id}`)}
-              onDelete={handleDelete}
+              locations={course.location ? [course.location] : []}
+              tees={[...(course.tees.male || []), ...(course.tees.female || [])]}
             />
           ))}
         </div>

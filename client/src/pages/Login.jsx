@@ -1,7 +1,7 @@
-// client/src/pages/Login.jsx
 import { useState, useContext, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
+import "../css/Login.css";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -11,15 +11,11 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
 
-  const NAVBAR_HEIGHT = 60;
-
-  // Lock scroll on mount, unlock on unmount
+  // Lock scroll
   useEffect(() => {
     const originalOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = originalOverflow;
-    };
+    return () => { document.body.style.overflow = originalOverflow; };
   }, []);
 
   useEffect(() => {
@@ -60,73 +56,17 @@ export default function Login() {
     }
   };
 
-  const pageStyle = {
-    height: `calc(100vh - ${NAVBAR_HEIGHT}px)`,
-    padding: "20px",
-    display: "flex",
-    justifyContent: "flex-start",
-    alignItems: "flex-start",
-    backgroundColor: "#f5f5f5",
-    boxSizing: "border-box",
-  };
-
-  const containerStyle = {
-    width: "100%",
-    maxWidth: "400px",
-    margin: "0 auto",
-    background: "#fff",
-    borderRadius: "8px",
-    boxShadow: "0 2px 10px rgba(0,0,0,0.05)",
-    display: "flex",
-    flexDirection: "column",
-    gap: "15px",
-    padding: "20px",
-  };
-
-  const inputStyle = {
-    width: "100%",
-    padding: "12px",
-    fontSize: "1rem",
-    borderRadius: "6px",
-    border: "1px solid #ccc",
-    boxSizing: "border-box",
-  };
-
-  const buttonStyle = {
-    width: "100%",
-    padding: "12px",
-    fontSize: "1rem",
-    fontWeight: "bold",
-    borderRadius: "8px",
-    border: "none",
-    backgroundColor: "#3498db",
-    color: "#fff",
-    cursor: "pointer",
-  };
-
-  const toggleButtonStyle = {
-    width: "100%",
-    padding: "10px",
-    fontSize: "0.9rem",
-    borderRadius: "8px",
-    border: "1px solid #ccc",
-    backgroundColor: "#f5f5f5",
-    cursor: "pointer",
-  };
-
-  const messageStyle = {
-    color: message?.includes("Error") ? "red" : "green",
-    fontSize: "0.9rem",
-    textAlign: "center",
-  };
-
   return (
-    <div style={pageStyle}>
-      <div style={containerStyle}>
+    <div className="login-page">
+      <div className="login-container">
         <h2 style={{ textAlign: "center" }}>{isRegister ? "Register" : "Login"}</h2>
-        {message && <p style={messageStyle}>{message}</p>}
+        {message && (
+          <p className={`login-message ${message.includes("Error") ? "error" : "success"}`}>
+            {message}
+          </p>
+        )}
 
-        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+        <form onSubmit={handleSubmit} className="login-form">
           {isRegister && (
             <input
               name="username"
@@ -134,7 +74,7 @@ export default function Login() {
               value={form.username}
               onChange={handleChange}
               required
-              style={inputStyle}
+              className="login-input"
             />
           )}
           <input
@@ -144,7 +84,7 @@ export default function Login() {
             value={form.email}
             onChange={handleChange}
             required
-            style={inputStyle}
+            className="login-input"
           />
           <input
             name="password"
@@ -153,14 +93,14 @@ export default function Login() {
             value={form.password}
             onChange={handleChange}
             required
-            style={inputStyle}
+            className="login-input"
           />
-          <button type="submit" style={buttonStyle} disabled={loading}>
+          <button type="submit" className="login-button" disabled={loading}>
             {loading ? (isRegister ? "Registering..." : "Logging in...") : isRegister ? "Register" : "Login"}
           </button>
         </form>
 
-        <button onClick={() => setIsRegister(!isRegister)} style={toggleButtonStyle}>
+        <button onClick={() => setIsRegister(!isRegister)} className="login-toggle-button">
           {isRegister ? "Already have an account? Login" : "Need an account? Register"}
         </button>
       </div>
