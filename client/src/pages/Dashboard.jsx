@@ -107,7 +107,7 @@ export default function Dashboard() {
   };
 
   // --- NORMALIZE ROUNDS FOR DISPLAY ONLY ---
-  const displayRounds = stats.all_rounds.map((r) => ({
+  const displayRounds = (stats.all_rounds ?? []).map((r) => ({
     ...r,
     course_name: r.course?.course_name ?? "-",
     club_name: r.course?.club_name ?? "-",
@@ -167,12 +167,6 @@ export default function Dashboard() {
         + Add Round
       </button>
 
-      <div className="handicap-card">
-        <div className="handicap-label">Handicap</div>
-        <div className="handicap-value">{formatHandicap(stats.handicap)}</div>
-        {stats.handicap_message && <div className="handicap-message">{stats.handicap_message}</div>}
-      </div>
-
       <div className="stats-tabs">
         {["9", "18", "combined"].map((m) => (
           <button
@@ -190,6 +184,10 @@ export default function Dashboard() {
       )}
 
       <div className="grid grid-4">
+        <div className="card dashboard-stat-card">
+          <h3>Handicap</h3>
+          <p>{formatHandicap(stats.handicap)}</p>
+        </div>
         {[
           ["Average Score", stats.average_score],
           ["Best Score", stats.best_score],
@@ -207,7 +205,9 @@ export default function Dashboard() {
       </div>
 
       <div className="section">
-        <h3>Last 5 Rounds</h3>
+        <div className="card last-five-rounds-card">
+           <h3>Last 5 Rounds</h3>
+        </div>
         {lastRounds.length === 0 ? (
           <p>No rounds recorded.</p>
         ) : (
@@ -250,7 +250,7 @@ export default function Dashboard() {
             ["GIR", stats.gir_avg, "%"],
             ["Putts", stats.avg_putts],
             ["Penalties", stats.avg_penalties],
-            ["Birdies -", birdiesOrBetterPerRound],
+            ["Birdies <", birdiesOrBetterPerRound],
             ["Pars", parPerRound],
             ["Bogeys", bogeysPerRound],
             ["Doubles +", doublesOrWorsePerRound],
@@ -264,7 +264,7 @@ export default function Dashboard() {
       )}
 
       {showAdvanced && (
-        <div className="card">
+        <div className="card trend-card">
           <h3>FIR / GIR % Trend</h3>
           <ResponsiveContainer width="100%" height={250}>
             <LineChart data={trendData}>

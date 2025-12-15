@@ -240,6 +240,12 @@ select option {
   text-overflow: ellipsis;
 }
 
+.trend-card h3,
+.last-five-rounds-card h3 {
+  margin: 0;
+  text-align: center;
+}
+
 .card-header h3 {
   color: #000;
   font-size: 1.2rem;
@@ -716,40 +722,6 @@ select option {
   padding: 20px;
 }
 
-/* Handicap Card */
-.handicap-card {
-  align-items: center;
-  background: #3498db;
-  box-sizing: border-box;
-  border-radius: 8px;
-  box-shadow: 0 3px 12px rgba(0,0,0,0.1);
-  display: flex;
-  justify-content: space-between;
-  padding: 15px 20px;
-  width: 100%;
-}
-
-.handicap-card .handicap-label {
-  flex: 1 1 auto;
-  font-size: 1.8rem;
-  text-align: left;
-   color: #fff;
-}
-
-.handicap-message {
-  color: #e0f0ff;
-  font-size: 0.85rem;
-  text-align: center;
-  width: 100%;
-}
-
-.handicap-value {
-  flex: 1 1 auto;
-  font-size: 1.8rem;
-  text-align: right;
-  color: #fff;
-}
-
 /* Dashboard Stat Cards */
 .dashboard-stat-card {
   align-items: center;
@@ -1018,12 +990,6 @@ select option {
   .grid-3,
   .grid-4 {
     grid-template-columns: repeat(2, 1fr);
-  }
-
-  .handicap-label,
-  .handicap-value {
-    flex: 1 1 45%;
-    font-size: 1.4rem;
   }
 
   .hole-card-grid {

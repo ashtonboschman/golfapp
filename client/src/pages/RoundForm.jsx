@@ -235,25 +235,45 @@ export default function RoundForm({ mode }) {
   }, [round.course_id]);
 
   useEffect(() => {
-    if (mode === "add" && !initialized) {
-      const initAddRound = async () => {
-        // Prefill course/tee from location.state if available
-        if (location.state) {
-          const { courseId, teeId } = location.state;
-          if (courseId) setRound(prev => ({ ...prev, course_id: String(courseId) }));
-          if (teeId) setRound(prev => ({ ...prev, tee_id: String(teeId) }));
-          
-          // Fetch holes for the selected tee and initialize scores to null
-          if (teeId) {
-            await fetchHoles(teeId, [], 0); // empty array -> all hole scores null
+  if (mode === "add" && !initialized && location.state) {
+    const { courseId, teeId, courseName } = location.state;
+
+    const initAddRound = async () => {
+      if (courseId) {
+        // Prefill course
+        setRound(prev => ({ ...prev, course_id: String(courseId) }));
+        setSelectedCourse({ label: courseName, value: courseId });
+
+        // Fetch tees for this course
+        const fetchedTees = await fetchTees(courseId);
+
+        if (teeId) {
+          // Prefill tee
+          const foundTee = fetchedTees.find(t => t.id === Number(teeId));
+          if (foundTee) {
+            setRound(prev => ({ ...prev, tee_id: String(teeId) }));
+            setSelectedTee({
+              value: foundTee.id,
+              label: `${foundTee.tee_name} ${foundTee.total_yards ?? 0} yds (${foundTee.course_rating ?? 0}/${foundTee.slope_rating ?? 0}) ${foundTee.number_of_holes ?? 0} holes`,
+              teeObj: foundTee
+            });
+
+            // Fetch holes for tee and initialize scores
+            const holesData = await fetchHoles(teeId, [], 0);
+
+            // Calculate total par automatically
+            const totalPar = holesData.reduce((sum, h) => sum + (h.par ?? 0), 0);
+            setRound(prev => ({ ...prev, par_total: totalPar }));
           }
         }
-        setInitialized(true);
-      };
+      }
+      setInitialized(true);
+    };
 
-      initAddRound();
-    }
-  }, [mode, location.state, initialized]);
+    initAddRound();
+  }
+}, [mode, location.state, initialized]);
+
 
   useEffect(() => {
     if (mode !== "edit" || !id || !token || courses.length === 0) return;
