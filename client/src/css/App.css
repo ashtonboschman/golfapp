@@ -1,0 +1,1062 @@
+/* ===========================
+   Global Reset
+=========================== */
+html, body {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  background-color: #eee;
+}
+
+/* ===========================
+   Global Container / Page Layout
+=========================== */
+.app-layout {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+  /* max-width: 800px;
+  margin: 0 auto; */
+}
+
+/* Scrollable content */
+.page-container {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  width: 100%;
+  margin: 0 auto;
+  padding: 10px;
+  box-sizing: border-box;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+
+/* ===========================
+   Vertical Flow / Stack
+=========================== */
+.page-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* ===========================
+   Page Titles / Headings
+=========================== */
+.page-title {
+  font-size: 1.75rem;
+  font-weight: bold;
+  text-align: center;
+}
+
+/* Small page titles */
+.page-title-small {
+  font-size: 1.2rem;
+}
+
+/* ===========================
+   Buttons (Global)
+=========================== */
+.add-round-btn,
+.btn {
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: bold;
+  padding: 12px;
+  text-align: center;
+  transition: background-color 0.2s ease, opacity 0.2s ease;
+  width: 100%;
+}
+
+.add-round-btn:hover,
+.btn:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.btn-cancel {
+  background-color: #e74c3c;
+  color: #fff;
+}
+
+.btn-cancel:hover {
+  background-color: #c0392b;
+}
+
+.btn-edit,
+.btn-toggle {
+  background-color: #3498db;
+  color: #fff;
+}
+
+.btn-edit:hover,
+.btn-toggle:hover {
+  background-color: #2980b9;
+}
+
+.btn-logout {
+  background-color: #e74c3c;
+  color: #fff;
+}
+
+.btn-save,
+.add-round-btn {
+  background-color: #2ecc71;
+  color: #fff;
+}
+
+.btn-save:hover,
+.add-round-btn:hover {
+  background-color: #27ae60;
+}
+
+.btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* ===========================
+   Form Inputs / Labels
+=========================== */
+.advanced-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.error-text {
+  color: red;
+  font-size: 0.85rem;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.form-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.form-input,
+select,
+textarea {
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  box-sizing: border-box;
+  font-size: 1rem;
+  padding: 12px;
+  width: 100%;
+}
+
+.form-input.disabled {
+  background-color: #f3f3f3;
+}
+
+.form-label {
+  display: block;
+  font-weight: bold;
+  font-size: 1rem;
+}
+
+.form-row {
+  display: flex;
+  flex-direction: column;
+}
+
+.form-row input,
+.form-row select,
+.form-row textarea {
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  box-sizing: border-box;
+  font-size: 1rem;
+  padding: 10px;
+  width: 100%;
+}
+
+.form-row label {
+  font-weight: bold;
+}
+
+/* ===========================
+   Messages (success / error)
+=========================== */
+.courses-message,
+.message {
+  font-weight: 500;
+  text-align: center;
+}
+
+.courses-message.error,
+.message.error {
+  color: red;
+}
+
+.courses-message.success,
+.message.success {
+  color: green;
+}
+
+/* ===========================
+   Cards (Base Styles)
+=========================== */
+.card {
+  background-color: #fff;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  padding: 12px;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+  width: 100%;
+  border-radius: 8px;
+}
+
+.card select,
+.card .form-input {
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+select option {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.card-header h3 {
+  color: #000;
+  font-size: 1.2rem;
+  line-height: 1.15;
+}
+
+.card-link {
+  color: inherit;
+  cursor: pointer;
+  display: block;
+  text-decoration: none;
+}
+
+.card-subtext {
+  color: #444;
+  font-size: 0.95rem;
+}
+
+/* ===========================
+   Grid Layout Helpers
+=========================== */
+.grid {
+  display: grid;
+  gap: 8px;
+}
+
+.grid-1 {
+  grid-template-columns: 1fr;
+}
+
+.grid-2 {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.grid-3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.grid-4 {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+
+/* ===========================
+   Tables
+=========================== */
+.table {
+  border-collapse: collapse;
+  table-layout: auto;
+  width: 100%;
+}
+
+.table th,
+.table td {
+  border: 1px solid #ddd;
+  overflow: hidden;
+  padding: 12px;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.table th {
+  background-color: #f4f4f4;
+  font-weight: bold;
+}
+
+.table-scroll {
+  overflow-x: auto;
+}
+
+.table-scroll::-webkit-scrollbar {
+  height: 8px;
+}
+
+.table-scroll::-webkit-scrollbar-thumb {
+  background: #ccc;
+  border-radius: 8px;
+}
+
+.table-scroll::-webkit-scrollbar-track {
+  background: #f0f0f0;
+}
+
+/* ===========================
+   Login Card Spacing
+=========================== */
+.login-card {
+  margin: 250px auto; /* 60px top/bottom margin, auto left/right */
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+}
+
+.login-card .form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px; /* uniform space between inputs and submit button */
+}
+
+.login-card .form-input,
+.login-card .btn-save,
+.login-card .btn-toggle {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* ===========================
+   Course Scorecard / Details
+=========================== */
+.course-card {
+  gap: 4px;
+}
+
+.course-name {
+  font-size: 1.2rem;
+  margin: 0;
+  line-height: 1.2;
+}
+
+.course-club,
+.course-location {
+  margin: 0;
+  font-size: 1rem;
+  color: #555;
+}
+
+
+.course-card h2,
+.course-card p {
+  margin: 0;
+}
+
+.course-holes-tag {
+  display: inline-block;       /* shrink to fit content */
+  align-self: flex-start;      /* prevents stretching inside flex column */
+  background-color: #ccc;      /* grey like tee-default */
+  color: #555;
+  font-size: 0.75rem;
+  font-weight: bold;
+  padding: 4px 10px;
+  border-radius: 999px;        /* fully oval */
+  margin-top: 8px;
+  text-transform: uppercase;
+}
+
+.tee-select-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.tee-select-card select {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tee-select-card select option {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.course-scorecard-wrapper {
+  align-items: flex-start;
+  display: flex;
+  flex-direction: row;
+  width: 100%;
+}
+
+.course-scorecard-left {
+  border-collapse: collapse;
+  min-width: 60px;
+  table-layout: fixed;
+}
+
+.course-scorecard-left th {
+  background: #fafafa;
+  border: 1px solid #ddd;
+  height: 25px;
+  padding: 16px 8px;
+  text-align: center;
+}
+
+.course-scorecard-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 0.95rem;
+}
+
+.course-scorecard-meta span {
+  font-weight: 500;
+}
+
+.course-scorecard-right {
+  border-collapse: collapse;
+  table-layout: auto;
+  width: 100%;
+}
+
+.course-scorecard-right td,
+.course-scorecard-right th {
+  border: 1px solid #ddd;
+  height: 25px;
+  overflow: hidden;
+  padding: 16px 8px;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.course-scorecard-right th {
+  background-color: #f4f4f4;
+  font-weight: bold;
+}
+
+.course-scorecard-scroll {
+  overflow-x: auto;
+  flex: 1;
+  width: 100%;
+}
+
+.course-scorecard-scroll::-webkit-scrollbar {
+  height: 8px;
+}
+
+.course-scorecard-scroll::-webkit-scrollbar-thumb {
+  background: #ccc;
+  border-radius: 8px;
+}
+
+.course-scorecard-scroll::-webkit-scrollbar-track {
+  background: #f0f0f0;
+}
+
+/* ===========================
+   HoleCard Styles
+=========================== */
+.hole-card {
+  background-color: #f9f9f9;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  box-sizing: border-box;
+  padding: 8px 12px;
+  width: 100%;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.hole-card-total {
+  background-color: #f9f9f9;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  box-sizing: border-box;
+  padding: 8px 12px;
+  width: 100%;
+  gap: 10px;
+}
+
+.hole-card .hole-header,
+.hole-card-total .hole-header {
+  font-size: 1.2rem;
+  font-weight: bold;
+  text-align: center;
+}
+
+.hole-card-grid,
+.hole-card-total .hole-card-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  width: 100%;
+}
+
+.hole-field {
+  align-items: center;
+  display: flex;
+  gap: 6px;
+  font-size: 1rem;
+}
+
+.hole-field input {
+  border: 1px solid #aaa;
+  border-radius: 8px;
+  box-sizing: border-box;
+  flex: 1 1 auto;
+  min-width: 40px;
+  padding: 2px 4px;
+  height: 30px;
+  font-size: 1rem;
+}
+
+/* ===========================
+   BinaryNullToggle (BNT) Styles
+=========================== */
+.binary-null-toggle {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  height: 30px;
+}
+
+.binary-null-toggle button {
+  background-color: #f0f0f0;
+  border: 1px solid #aaa;
+  border-radius: 6px;
+  cursor: pointer;
+  flex: 1 1 auto;
+  font-weight: bold;
+  padding: 4px 6px;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.binary-null-toggle button.active-false {
+  background-color: #e74c3c;
+  border-color: #c0392b;
+  color: #fff;
+}
+
+.binary-null-toggle button.active-true {
+  background-color: #2ecc71;
+  border-color: #27ae60;
+  color: #fff;
+}
+
+.binary-null-toggle button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* ===========================
+   RoundCard Specific
+=========================== */
+.round-date {
+  color: #555;
+  font-size: 0.9rem;
+}
+
+.roundcard-header {
+  display: flex;
+  position: relative; /* for absolute button placement */
+  gap: 8px;
+  flex-direction: row;
+  align-items: flex-start;
+}
+
+.roundcard-header-text {
+  padding-right: 100px; /* reserve space for buttons */
+  display: flex;
+  flex-direction: column;
+  gap: 2px; /* minimal gap between course name, city, tee/date */
+  word-wrap: break-word;
+}
+
+.roundcard-course-name {
+  font-size: 1.2rem;
+  margin: 0;
+}
+
+.roundcard-city {
+  font-size: 1rem;
+  margin: 0;
+  color: #555;
+}
+
+.roundcard-header-info {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  font-size: 0.75rem;
+  color: #555;
+}
+
+.roundcard-button-group {
+  position: absolute;
+  top: 6px;
+  right: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.roundcard-info-row {
+  font-size: 1rem;
+  word-break: break-word;
+}
+
+.roundcard-subtitle {
+  margin-top: -4px;
+  font-size: 0.85rem;
+  color: #555;
+}
+
+.roundcard-notes {
+  color: #555;
+  font-size: 0.8rem;
+}
+
+.tee-tag {
+  padding: 2px 6px;
+  border-radius: 8px;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+}
+
+.tee-black {
+  background-color: #000;
+  color: #fff;
+}
+
+.tee-blue {
+  background-color: #1e90ff;
+  color: #fff;
+}
+
+.tee-default {
+  background-color: #888;
+  color: #fff;
+}
+
+.tee-gold {
+  background-color: #a79037;
+  color: #000;
+}
+
+.tee-green {
+  background-color: #177c17;
+  color: #fff;
+}
+
+.tee-red {
+  background-color: #e74c3c;
+  color: #fff;
+}
+
+.tee-white {
+  background-color: #fff;
+  border: 1px solid #ccc;
+  color: #000;
+}
+
+.tee-yellow {
+  background-color: #facb10;
+  color: #000;
+}
+
+/* ===========================
+   Dashboard Page Styles
+=========================== */
+/* Add Round Button */
+.add-round-btn {
+  background-color: #2ecc71;
+  border: none;
+  border-radius: 8px;
+  color: #fff;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: bold;
+  padding: 12px;
+  width: 100%;
+}
+
+.add-round-btn:hover {
+  background-color: #27ae60;
+}
+
+/* Loading */
+.loading-text {
+  padding: 20px;
+}
+
+/* Handicap Card */
+.handicap-card {
+  align-items: center;
+  background: #3498db;
+  box-sizing: border-box;
+  border-radius: 8px;
+  box-shadow: 0 3px 12px rgba(0,0,0,0.1);
+  display: flex;
+  justify-content: space-between;
+  padding: 15px 20px;
+  width: 100%;
+}
+
+.handicap-card .handicap-label {
+  flex: 1 1 auto;
+  font-size: 1.8rem;
+  text-align: left;
+   color: #fff;
+}
+
+.handicap-message {
+  color: #e0f0ff;
+  font-size: 0.85rem;
+  text-align: center;
+  width: 100%;
+}
+
+.handicap-value {
+  flex: 1 1 auto;
+  font-size: 1.8rem;
+  text-align: right;
+  color: #fff;
+}
+
+/* Dashboard Stat Cards */
+.dashboard-stat-card {
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 16px;
+}
+
+/* Label (top) */
+.dashboard-stat-card h3 {
+  font-size: 1.2rem;
+  font-weight: bold;
+  margin: 0;
+  color: #000000;
+}
+
+/* Value (center, large) */
+.dashboard-stat-card p {
+  font-size: 2.4rem;
+  margin: 0;
+  color: #000;
+  line-height: 1;
+}
+
+.rounds-list {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+/* Stats Grids */
+.advanced-stats-grid,
+.basic-stats-grid {
+  box-sizing: border-box;
+  display: grid;
+  gap: 15px;
+  width: 100%;
+}
+
+.advanced-stats-grid {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.basic-stats-grid {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.stat-card {
+  background: #fff;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+  border-radius: 8px;
+  box-sizing: border-box;
+  padding: 15px;
+  width: 100%;
+}
+
+/* Stats Tabs / Mode Buttons */
+.combined-note {
+  color: #444;
+  font-size: 0.8rem;
+  text-align: center;
+  margin: -8px 0;
+}
+
+.stats-tab {
+  background: #fff;
+  border: none;
+  border-radius: 8px;
+  box-sizing: border-box;
+  cursor: pointer;
+  flex: 1 0 auto;
+  min-width: 80px;
+  padding: 10px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.stats-tab.active {
+  background: #3498db;
+  color: #fff;
+  cursor: default;
+}
+
+.stats-tabs {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 8px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ===========================
+   Header & Footer
+=========================== */
+/* Footer container */
+.footer-menu {
+  align-items: center;
+  background-color: #2c3e50;
+  bottom: 0;
+  display: flex;
+  justify-content: center; /* center inner container */
+  left: 0;
+  padding: 0;
+  position: relative;
+  width: 100%;
+  height: 80px;
+  z-index: 100;
+  flex-shrink: 0;
+}
+
+/* Inner container - flex row for desktop and mobile */
+.footer-menu-inner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  padding: 0 12px;
+}
+
+/* Buttons - equal width */
+.footer-menu-inner button {
+  flex: 1;
+  margin: 0 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(255,255,255,0.05);
+  border: none;
+  border-radius: 12px;
+  color: #fff;
+  padding: 8px 0;
+  cursor: pointer;
+  transition: background-color 0.2s, transform 0.2s;
+}
+
+.footer-menu-inner button:hover {
+  background-color: rgba(255,255,255,0.15);
+  transform: translateY(-2px);
+}
+
+.footer-menu-inner button.active {
+  background-color: #3498db; /* highlight color */
+  transform: translateY(-4px); /* moves button up */
+  color: #fff; /* ensure label is visible */
+}
+
+.footer-menu-inner button .emoji {
+  font-size: 26px;
+  line-height: 1;
+}
+
+.footer-menu-inner button .label {
+  font-size: 11px;
+  margin-top: 4px;
+  white-space: nowrap;
+}
+
+.header {
+  position: sticky;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #2c3e50;
+  color: #fff;
+  height: 80px;
+  z-index: 100;
+  flex-shrink: 0;
+  top: 0;
+}
+
+.header .logo {
+  cursor: pointer;
+  font-size: 35px;
+  text-align: center;
+}
+
+.header .settings-button {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  font-size: 24px;
+  padding: 16px;
+}
+
+/* ===========================
+   Utility Helpers
+=========================== */
+.align-center {
+  align-items: center;
+}
+
+.flex {
+  display: flex;
+}
+
+.flex-column {
+  flex-direction: column;
+}
+
+.gap-12 {
+  gap: 12px;
+}
+
+.justify-center {
+  justify-content: center;
+}
+
+.justify-start {
+  justify-content: flex-start;
+}
+
+.margin-top-8 {
+  margin-top: 8px;
+}
+
+.margin-top-16 {
+  margin-top: 16px;
+}
+
+/* ===========================
+   Mobile / Responsive Helpers
+=========================== */
+@media (max-width: 600px) {
+  .page-container {
+    padding: 10px;
+  }
+
+  .advanced-stats-grid,
+  .basic-stats-grid {
+    gap: 12px;
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .btn {
+    font-size: 0.9rem;
+    padding: 10px;
+  }
+
+  .tee-select-card select {
+    font-size: 0.9rem;
+  }
+
+  .course-scorecard-left th,
+  .course-scorecard-right th,
+  .course-scorecard-right td {
+    height: 50px;
+    padding: 12px 6px;
+  }
+
+  .form-row input,
+  .form-row select,
+  .form-row textarea {
+    padding: 8px;
+  }
+
+  .grid-2 {
+    grid-template-columns: 1fr;
+  }
+
+  .grid-3,
+  .grid-4 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .handicap-label,
+  .handicap-value {
+    flex: 1 1 45%;
+    font-size: 1.4rem;
+  }
+
+  .hole-card-grid {
+    grid-template-columns: repeat(auto-fit, minmax(50px, 1fr));
+  }
+
+  .hole-field input {
+    padding: 2px 4px;
+  }
+
+  .binary-null-toggle {
+    gap: 2px;
+  }
+
+  .binary-null-toggle button {
+    font-size: 0.85rem;
+    padding: 1px 2px;
+  }
+
+  .page-container {
+    padding: 10px;
+  }
+
+  .stats-tab {
+    flex: 1 0 auto;
+    font-size: 0.85rem;
+  }
+
+  .text-sm {
+    font-size: 0.85rem;
+  }
+
+  .text-xs {
+    font-size: 0.75rem;
+  }
+}

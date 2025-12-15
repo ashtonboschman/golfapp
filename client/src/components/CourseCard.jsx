@@ -1,26 +1,23 @@
-import "../css/CourseCard.css";
+import { Link } from "react-router-dom";
 
 export default function CourseCard({ course, locations = [], tees = [] }) {
-  // Get city from the first location (if any)
-  const city = locations.length > 0 ? locations[0].city : "-";
+  const location = locations.length > 0 ? locations[0] : {};
+  const city = location.city || "-";
+  const state = location.state || "-";
+  const country = location.country || "-";
+  const locationString = `${city}, ${state}, ${country}`;
 
-  // Get number of holes from the first tee (if any)
   const holes = tees.length > 0 && tees[0].number_of_holes
     ? `${tees[0].number_of_holes} Holes`
     : "- Holes";
 
   return (
-    <div className="card">
-      {/* Header */}
-      <div className="card-header">
-        <h3>{course.course_name || "-"}</h3>
+    <Link to={`/courses/${course.id}`} className="card-link">
+      <div className="card course-card">
+        <h3 className="course-name">{course.course_name || "-"}</h3>
+        <h5 className="course-location">{locationString}</h5>
+        <p className="course-holes-tag">{holes}</p>
       </div>
-
-      {/* City */}
-      <div className="card-city">{city}</div>
-
-      {/* Holes */}
-      <div className="card-holes">{holes}</div>
-    </div>
+    </Link>
   );
 }

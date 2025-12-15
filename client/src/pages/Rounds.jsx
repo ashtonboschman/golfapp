@@ -3,7 +3,6 @@ import { useContext, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
 import RoundCard from "../components/RoundCard";
-import "../css/Rounds.css";
 
 export default function Rounds() {
   const { auth, logout } = useContext(AuthContext);
@@ -19,12 +18,10 @@ export default function Rounds() {
 
   const BASE_URL = "http://localhost:3000";
 
-  // Redirect if not logged in
   useEffect(() => {
     if (!token) navigate("/login", { replace: true });
   }, [token, navigate]);
 
-  // Fetch tees and rounds
   useEffect(() => {
     if (token) {
       fetchTees();
@@ -32,7 +29,6 @@ export default function Rounds() {
     }
   }, [token]);
 
-  // Filter rounds based on search
   useEffect(() => {
     if (!search.trim()) {
       setFilteredRounds(rounds);
@@ -48,7 +44,6 @@ export default function Rounds() {
     }
   }, [search, rounds]);
 
-  // Fetch all tees
   const fetchTees = async () => {
     try {
       const res = await fetch(`${BASE_URL}/api/tees`, {
@@ -62,7 +57,6 @@ export default function Rounds() {
     }
   };
 
-  // Fetch all rounds
   const fetchRounds = async () => {
     setLoading(true);
     setMessage("");
@@ -82,11 +76,8 @@ export default function Rounds() {
       }
 
       const data = await res.json();
-
-      // Sort by date descending
       const sorted = data.sort((a, b) => new Date(b.date) - new Date(a.date));
 
-      // Flatten each round for the RoundCard (but do NOT normalize)
       const flattenedRounds = sorted.map((r) => {
         const teeData = tees.find((t) => t.id === r.tee?.tee_id);
         return {
@@ -97,9 +88,9 @@ export default function Rounds() {
           gir_hit: r.gir_hit != null ? Number(r.gir_hit) : null,
           putts: r.putts != null ? Number(r.putts) : null,
           penalties: r.penalties != null ? Number(r.penalties) : null,
-          par: r.tee?.par_total ?? null,             // <-- updated
+          par: r.tee?.par_total ?? null,
           course_name: r.course?.course_name ?? "-",
-          city: r.location?.city ?? "-",             // <-- updated
+          city: r.location?.city ?? "-",
           tee_id: r.tee?.tee_id ?? null,
           tee_name: teeData?.tee_name ?? r.tee?.tee_name ?? "-",
           notes: r.notes ?? null,
@@ -119,7 +110,6 @@ export default function Rounds() {
     }
   };
 
-  // Delete round
   const handleDelete = async (id) => {
     if (!window.confirm("Are you sure you want to delete this round?")) return;
 
@@ -142,29 +132,22 @@ export default function Rounds() {
   };
 
   return (
-    <div className="rounds-page">
-      <h2 className="rounds-title">Rounds</h2>
-
+    <div className="page-stack">
       {message && (
-        <p
-          className={`rounds-message ${
-            message.toLowerCase().includes("error") ? "error" : "success"
-          }`}
-        >
+        <p className={`message ${message.toLowerCase().includes("error") ? "error" : "success"}`}>
           {message}
         </p>
       )}
 
-      {/* Search bar */}
       <input
         type="text"
-        placeholder="Search by course or city..."
+        placeholder="Search Rounds"
         value={search}
         onChange={(e) => setSearch(e.target.value)}
-        className="rounds-search"
+        className="form-input"
       />
 
-      <button onClick={() => navigate("/rounds/add")} className="rounds-add-btn">
+      <button onClick={() => navigate("/rounds/add")} className="btn btn-save">
         + Add Round
       </button>
 
@@ -173,14 +156,14 @@ export default function Rounds() {
       ) : filteredRounds.length === 0 ? (
         <p>No rounds match your search.</p>
       ) : (
-        <div className="rounds-grid">
+        <div className="grid grid-1">
           {filteredRounds.map((round) => (
             <RoundCard
               key={round.id}
               round={round}
               onEdit={(id) => navigate(`/rounds/edit/${id}`)}
               onDelete={handleDelete}
-              showAdvanced={true} // will display hole-by-hole if exists
+              showAdvanced={true}
             />
           ))}
         </div>

@@ -45,11 +45,29 @@ const buildCourseResponse = async (courseId) => {
 };
 
 // ============================================================================
-// GET ALL COURSES
+// GET ALL COURSES (Paginated, returns plain array)
+// Example: /courses?limit=20&page=1
 // ============================================================================
 router.get("/", auth, async (req, res) => {
   try {
-    const courses = await query(`SELECT * FROM courses ORDER BY club_name ASC, course_name ASC`);
+    const limit = parseInt(req.query.limit) || 20;
+    const page = parseInt(req.query.page) || 1;
+    const offset = (page - 1) * limit;
+    const search = req.query.search ? `%${req.query.search}%` : null;
+
+    let sql = `SELECT * FROM courses`;
+    const params = [];
+
+    if (search) {
+      sql += ` WHERE course_name LIKE ?`;
+      params.push(search);
+    }
+
+    sql += ` ORDER BY course_name ASC LIMIT ? OFFSET ?`;
+    params.push(limit, offset);
+
+    const courses = await query(sql, params);
+
     if (!courses.length) return res.json([]);
 
     const courseResponses = [];
@@ -82,7 +100,7 @@ router.get("/:id", auth, async (req, res) => {
 });
 
 // ============================================================================
-// CREATE COURSE (with location, tees, and holes)
+// CREATE COURSE
 // ============================================================================
 router.post("/", auth, async (req, res) => {
   try {
@@ -90,13 +108,11 @@ router.post("/", auth, async (req, res) => {
     if (!courseIdFromApi || !club_name || !course_name)
       return res.status(400).json({ error: "id, club_name, and course_name are required" });
 
-    // Insert course using API-provided ID
     await query(
       `INSERT INTO courses (id, club_name, course_name) VALUES (?, ?, ?)`,
       [courseIdFromApi, club_name, course_name]
     );
 
-    // Insert location
     if (location) {
       const { address, city, state, country, latitude, longitude } = location;
       await query(
@@ -106,7 +122,6 @@ router.post("/", auth, async (req, res) => {
       );
     }
 
-    // Insert tees and holes
     if (tees) {
       for (const gender of ["male", "female"]) {
         if (!tees[gender]) continue;

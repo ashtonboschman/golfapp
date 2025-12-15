@@ -11,7 +11,6 @@ export default function Settings() {
 
   return (
     <div style={{ padding: "15px", maxWidth: "100%", margin: "auto" }}>
-      <h2>Settings</h2>
       <div style={cardStyle}>
         <p>Manage preferences, app behavior, and more ⚙️</p>
       </div>

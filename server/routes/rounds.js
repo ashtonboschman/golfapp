@@ -56,7 +56,7 @@ function formatRoundRow(row) {
     user_id: row.user_id,
     course_id: row.course_id,
     tee_id: row.tee_id,
-    hole_by_hole: row.hole_by_hole,
+    hole_by_hole: row.hole_by_hole ? 1 : 0,
     advanced_stats: row.advanced_stats,
     date: row.date,
     score: row.score === null ? null : Number(row.score),

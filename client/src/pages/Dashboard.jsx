@@ -12,7 +12,6 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
-import "../css/Dashboard.css";
 
 export default function Dashboard() {
   const { auth, logout } = useContext(AuthContext);
@@ -35,6 +34,7 @@ export default function Dashboard() {
     gir_avg: null,
     avg_putts: null,
     avg_penalties: null,
+    hbh_stats: null,
   });
 
   const BASE_URL = "http://localhost:3000";
@@ -46,7 +46,7 @@ export default function Dashboard() {
     const fetchStats = async () => {
       setLoading(true);
       try {
-        const res = await fetch(`${BASE_URL}/api/dashboard`, {
+        const res = await fetch(`${BASE_URL}/api/dashboard?statsMode=${statsMode}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
 
@@ -56,19 +56,7 @@ export default function Dashboard() {
         }
 
         const data = await res.json();
-        setStats({
-          handicap: data.handicap ?? null,
-          handicap_message: data.handicap_message ?? null,
-          total_rounds: Number(data.total_rounds) || 0,
-          best_score: data.best_score != null ? Number(data.best_score) : null,
-          worst_score: data.worst_score != null ? Number(data.worst_score) : null,
-          average_score: data.average_score != null ? Number(data.average_score) : null,
-          all_rounds: Array.isArray(data.all_rounds) ? data.all_rounds : [],
-          fir_avg: data.fir_avg ?? null,
-          gir_avg: data.gir_avg ?? null,
-          avg_putts: data.avg_putts ?? null,
-          avg_penalties: data.avg_penalties ?? null,
-        });
+        setStats(data);
       } catch (err) {
         console.error("Dashboard fetch error:", err);
       } finally {
@@ -77,7 +65,7 @@ export default function Dashboard() {
     };
 
     fetchStats();
-  }, [token, navigate, logout]);
+  }, [token, navigate, logout, statsMode]);
 
   // --- FETCH TEES ---
   useEffect(() => {
@@ -118,111 +106,62 @@ export default function Dashboard() {
     return num % 1 === 0 ? num : num.toFixed(1);
   };
 
-  // --- NORMALIZE ROUNDS ---
-  const normalizeRounds = stats.all_rounds
-    .map((r) => ({
-      id: r.id,
-      date: r.date,
-      score: r.score != null ? Number(r.score) : null,
-      fir_hit: r.fir_hit != null ? Number(r.fir_hit) : null,
-      fir_total: r.fir_total != null ? Number(r.fir_total) : null,
-      gir_hit: r.gir_hit != null ? Number(r.gir_hit) : null,
-      gir_total: r.gir_total != null ? Number(r.gir_total) : null,
-      putts: r.putts != null ? Number(r.putts) : null,
-      penalties: r.penalties != null ? Number(r.penalties) : null,
-      holes: r.holes != null ? Number(r.holes) : 18,
-      rating: r.rating != null ? Number(r.rating) : null,
-      slope: r.slope != null ? Number(r.slope) : null,
-      par: r.par != null ? Number(r.par) : null,
-      course_name: r.course?.course_name ?? "-",
-      club_name: r.course?.club_name ?? "-",
-      city: r.course?.city ?? "-",
-      tee_id: r.tee?.tee_id ?? null,
-      tee_name: r.tee?.tee_name ?? "-",
-      notes: r.notes ?? null,
-    }))
-    .filter((r) =>
-      statsMode === "9" ? r.holes === 9 : statsMode === "18" ? r.holes === 18 : true
-    )
-    .map((r) =>
-      statsMode === "combined" && r.holes === 9
-        ? {
-            ...r,
-            score: r.score != null ? r.score * 2 : null,
-            fir_hit: r.fir_hit != null ? r.fir_hit * 2 : null,
-            fir_total: r.fir_total != null ? r.fir_total * 2 : null,
-            gir_hit: r.gir_hit != null ? r.gir_hit * 2 : null,
-            gir_total: r.gir_total != null ? r.gir_total * 2 : null,
-            putts: r.putts != null ? r.putts * 2 : null,
-            penalties: r.penalties != null ? r.penalties * 2 : null,
-            holes: 18,
-            rating: r.rating != null ? r.rating * 2 : null,
-            par: r.par != null ? r.par * 2 : null,
-          }
-        : r
-    );
+  // --- NORMALIZE ROUNDS FOR DISPLAY ONLY ---
+  const displayRounds = stats.all_rounds.map((r) => ({
+    ...r,
+    course_name: r.course?.course_name ?? "-",
+    club_name: r.course?.club_name ?? "-",
+    city: r.course?.city ?? "-",
+    tee_id: r.tee?.tee_id ?? null,
+    tee_name: r.tee?.tee_name ?? "-",
+  }));
 
-  const sortedRounds = [...normalizeRounds].sort((a, b) => new Date(b.date) - new Date(a.date));
+  const sortedRounds = [...displayRounds].sort((a, b) => new Date(b.date) - new Date(a.date));
   const lastRounds = sortedRounds.slice(0, 5);
+  const totalRounds = stats.total_rounds;
 
-  const totalRounds =
-    statsMode === "9"
-      ? normalizeRounds.filter((r) => r.holes === 9).length
-      : statsMode === "18"
-      ? normalizeRounds.filter((r) => r.holes === 18).length
-      : normalizeRounds.length;
+  const par3_avg = stats.hbh_stats?.par3_avg ?? null;
+  const par4_avg = stats.hbh_stats?.par4_avg ?? null;
+  const par5_avg = stats.hbh_stats?.par5_avg ?? null;
 
-  // --- ADVANCED STATS ---
-  const firRounds = normalizeRounds.filter((r) => r.fir_hit != null && r.fir_total != null);
-  const girRounds = normalizeRounds.filter((r) => r.gir_hit != null && r.gir_total != null);
-  const puttsRounds = normalizeRounds.filter((r) => r.putts != null);
-  const penaltiesRounds = normalizeRounds.filter((r) => r.penalties != null);
-
-  const fir_avg = firRounds.length
-    ? (firRounds.reduce((sum, r) => sum + r.fir_hit, 0) /
-        firRounds.reduce((sum, r) => sum + r.fir_total, 0)) *
-      100
+  const birdiesOrBetterPerRound = stats.hbh_stats?.scoring_breakdown
+    ? ((stats.hbh_stats.scoring_breakdown.ace ?? 0) +
+        (stats.hbh_stats.scoring_breakdown.albatross ?? 0) +
+        (stats.hbh_stats.scoring_breakdown.eagle ?? 0) +
+        (stats.hbh_stats.scoring_breakdown.birdie ?? 0)) /
+      stats.hbh_stats.hbh_rounds_count
     : null;
 
-  const gir_avg = girRounds.length
-    ? (girRounds.reduce((sum, r) => sum + r.gir_hit, 0) /
-        girRounds.reduce((sum, r) => sum + r.gir_total, 0)) *
-      100
+  const parPerRound = stats.hbh_stats?.scoring_breakdown
+    ? (stats.hbh_stats.scoring_breakdown.par ?? 0) / stats.hbh_stats.hbh_rounds_count
     : null;
 
-  const avgPutts = puttsRounds.length
-    ? puttsRounds.reduce((sum, r) => sum + r.putts, 0) / puttsRounds.length
+  const bogeysPerRound = stats.hbh_stats?.scoring_breakdown
+    ? (stats.hbh_stats.scoring_breakdown.bogey ?? 0) / stats.hbh_stats.hbh_rounds_count
     : null;
 
-  const avgPenalties = penaltiesRounds.length
-    ? penaltiesRounds.reduce((sum, r) => sum + r.penalties, 0) / penaltiesRounds.length
+  const doublesOrWorsePerRound = stats.hbh_stats?.scoring_breakdown
+    ? (stats.hbh_stats.scoring_breakdown.double_plus ?? 0) / stats.hbh_stats.hbh_rounds_count
     : null;
 
-  // --- TREND DATA (handles 9-hole doubling in combined mode) ---
   const trendData = [...lastRounds]
     .sort((a, b) => new Date(a.date) - new Date(b.date))
-    .map((r) => {
-      const multiplier = statsMode === "combined" && r.holes === 18 && r.score % 2 === 0 ? 1 : 1;
-      return {
-        date: r.date,
-        score: r.score,
-        fir_pct:
-          r.fir_hit != null && r.fir_total != null ? (r.fir_hit / r.fir_total) * 100 : null,
-        gir_pct:
-          r.gir_hit != null && r.gir_total != null ? (r.gir_hit / r.gir_total) * 100 : null,
-      };
-    });
+    .map((r) => ({
+      date: r.date,
+      score: r.score,
+      fir_pct: r.fir_hit != null && r.fir_total != null ? (r.fir_hit / r.fir_total) * 100 : null,
+      gir_pct: r.gir_hit != null && r.gir_total != null ? (r.gir_hit / r.gir_total) * 100 : null,
+    }));
+
 
   const scores = trendData.map((d) => d.score).filter((v) => v != null);
   const yMin = scores.length ? Math.floor(Math.min(...scores) / 10) * 10 : 0;
   const yMax = scores.length ? Math.ceil(Math.max(...scores) / 10) * 10 : 100;
 
   return (
-    <div className="dashboard-container">
-      <h2>My Dashboard</h2>
-
+    <div className="page-stack">
       <button
-        className="add-round-btn"
+        className="btn btn-save"
         onClick={() => navigate("/rounds/add", { state: { from: "/dashboard" } })}
       >
         + Add Round
@@ -246,37 +185,28 @@ export default function Dashboard() {
           </button>
         ))}
       </div>
-
       {statsMode === "combined" && (
         <p className="combined-note">9-hole rounds are doubled to approximate 18-hole stats.</p>
       )}
 
-      <div className="basic-stats-grid">
+      <div className="grid grid-4">
         {[
-          [
-            "Average Score",
-            normalizeRounds.length
-              ? normalizeRounds.reduce((sum, r) => sum + (r.score || 0), 0) / normalizeRounds.length
-              : null,
-          ],
-          [
-            "Best Score",
-            normalizeRounds.length ? Math.min(...normalizeRounds.map((r) => r.score)) : null,
-          ],
-          [
-            "Worst Score",
-            normalizeRounds.length ? Math.max(...normalizeRounds.map((r) => r.score)) : null,
-          ],
+          ["Average Score", stats.average_score],
+          ["Best Score", stats.best_score],
+          ["Worst Score", stats.worst_score],
           ["Total Rounds", totalRounds],
+          ["Par 3 Average", par3_avg],
+          ["Par 4 Average", par4_avg],
+          ["Par 5 Average", par5_avg],
         ].map(([label, val]) => (
-          <div className="stat-card" key={label}>
+          <div className="card dashboard-stat-card" key={label}>
             <h3>{label}</h3>
             <p>{formatNumber(val)}</p>
           </div>
         ))}
       </div>
 
-      <div className="last-rounds-section">
+      <div className="section">
         <h3>Last 5 Rounds</h3>
         {lastRounds.length === 0 ? (
           <p>No rounds recorded.</p>
@@ -295,8 +225,8 @@ export default function Dashboard() {
         )}
       </div>
 
-      <div className="trend-card">
-        <h3>Score Trend (Last 5 Rounds)</h3>
+      <div className="card trend-card">
+        <h3>Score Trend</h3>
         <ResponsiveContainer width="100%" height={250}>
           <LineChart data={trendData}>
             <CartesianGrid strokeDasharray="3 3" />
@@ -309,58 +239,62 @@ export default function Dashboard() {
         </ResponsiveContainer>
       </div>
 
-      <button className="toggle-advanced-btn" onClick={() => setShowAdvanced((p) => !p)}>
+      <button className="btn btn-toggle" onClick={() => setShowAdvanced((p) => !p)}>
         {showAdvanced ? "Hide Advanced Stats" : "Show Advanced Stats"}
       </button>
 
       {showAdvanced && (
-        <>
-          <div className="advanced-stats-grid">
-            {[
-              ["FIR %", fir_avg],
-              ["GIR %", gir_avg],
-              ["Putts / Round", avgPutts],
-              ["Penalties / Round", avgPenalties],
-            ].map(([label, val]) => (
-              <div className="stat-card" key={label}>
-                <h3>{label}</h3>
-                <p>{label.includes("%") ? formatPercent(val) : formatNumber(val)}</p>
-              </div>
-            ))}
-          </div>
+        <div className="grid grid-4">
+          {[
+            ["FIR", stats.fir_avg, "%"],
+            ["GIR", stats.gir_avg, "%"],
+            ["Putts", stats.avg_putts],
+            ["Penalties", stats.avg_penalties],
+            ["Birdies -", birdiesOrBetterPerRound],
+            ["Pars", parPerRound],
+            ["Bogeys", bogeysPerRound],
+            ["Doubles +", doublesOrWorsePerRound],
+          ].map(([label, val, isPercent]) => (
+            <div className="card dashboard-stat-card" key={label}>
+              <h3>{label}</h3>
+              <p>{isPercent ? formatPercent(val) : formatNumber(val)}</p>
+            </div>
+          ))}
+        </div>
+      )}
 
-          <div className="trend-card">
-            <h3>FIR / GIR % Trend</h3>
-            <ResponsiveContainer width="100%" height={250}>
-              <LineChart data={trendData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="date" tickFormatter={formatDate} />
-                <YAxis domain={[0, 100]} />
-                <Tooltip
-                  labelFormatter={formatDate}
-                  formatter={(v) => (v != null ? formatPercent(v) : "-")}
-                />
-                <Legend />
-                <Line
-                  type="monotone"
-                  dataKey="fir_pct"
-                  name="FIR %"
-                  stroke="#8884d8"
-                  dot={{ r: 3 }}
-                  connectNulls
-                />
-                <Line
-                  type="monotone"
-                  dataKey="gir_pct"
-                  name="GIR %"
-                  stroke="#82ca9d"
-                  dot={{ r: 3 }}
-                  connectNulls
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </>
+      {showAdvanced && (
+        <div className="card">
+          <h3>FIR / GIR % Trend</h3>
+          <ResponsiveContainer width="100%" height={250}>
+            <LineChart data={trendData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="date" tickFormatter={formatDate} />
+              <YAxis domain={[0, 100]} />
+              <Tooltip
+                labelFormatter={formatDate}
+                formatter={(v) => (v != null ? formatPercent(v) : "-")}
+              />
+              <Legend />
+              <Line
+                type="monotone"
+                dataKey="fir_pct"
+                name="FIR %"
+                stroke="#8884d8"
+                dot={{ r: 3 }}
+                connectNulls
+              />
+              <Line
+                type="monotone"
+                dataKey="gir_pct"
+                name="GIR %"
+                stroke="#82ca9d"
+                dot={{ r: 3 }}
+                connectNulls
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
       )}
     </div>
   );

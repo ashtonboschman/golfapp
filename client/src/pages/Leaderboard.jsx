@@ -11,7 +11,6 @@ export default function Leaderboard() {
 
   return (
     <div style={{ padding: "15px", maxWidth: "100%", margin: "auto" }}>
-      <h2>Leaderboard</h2>
       <div style={cardStyle}>
         <p>Page to display top scores and rankings. ⛳</p>
       </div>

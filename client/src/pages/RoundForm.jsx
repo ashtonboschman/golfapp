@@ -1,7 +1,8 @@
-import { useEffect, useState, useContext } from "react";
+import { memo, useEffect, useState, useContext, useMemo } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
-import "../css/RoundForm.css";
+import { AsyncPaginate } from 'react-select-async-paginate';
+import HoleCard from "../components/HoleCard";
 
 export default function RoundForm({ mode }) {
   const { id } = useParams();
@@ -79,49 +80,79 @@ export default function RoundForm({ mode }) {
     return payload;
   };
 
-  // ────────────────────────────
-  // Binary toggle for FIR/GIR
-  // ────────────────────────────
-  const BinaryNullToggle = ({ value, onChange, disabled = false }) => {
-    const handleClick = (val) => {
-      if (!disabled) onChange(value === val ? null : val);
-    };
-    return (
-      <div className="binary-null-toggle">
-        <button
-          className={value === 0 ? "active-red" : ""}
-          onClick={() => handleClick(0)}
-          disabled={disabled}
-        >
-          X
-        </button>
-        <button
-          className={value === 1 ? "active-green" : ""}
-          onClick={() => handleClick(1)}
-          disabled={disabled}
-        >
-          ✓
-        </button>
-      </div>
-    );
-  };
 
   // ────────────────────────────
   // Fetchers
   // ────────────────────────────
   useEffect(() => {
+    if (!token) return;
+
+    const fetchCourses = async () => {
+      try {
+        const res = await fetch(`http://localhost:3000/api/courses?limit=1000`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        setCourses(data);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+
+    fetchCourses();
+  }, [token]);
+
+  useEffect(() => {
     if (!token) navigate("/login", { replace: true });
   }, [token, navigate]);
 
-  const fetchCourses = async () => {
+  const loadCourseOptions = async (search, loadedOptions, { page }) => {
+    if (!token) return { options: [], hasMore: false, additional: { page: 1 } };
+
     try {
-      const res = await fetch("http://localhost:3000/api/courses", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setCourses(await res.json());
+      const res = await fetch(
+        `http://localhost:3000/api/courses?search=${encodeURIComponent(search)}&limit=20&page=${page}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      const data = await res.json();
+
+      return {
+        options: data.map((course) => ({ label: course.course_name, value: course.id })),
+        hasMore: data.length === 20, // fetch more if page is full
+        additional: { page: page + 1 },
+      };
     } catch (err) {
       console.error(err);
-      setMessage("Error fetching courses.");
+      return { options: [], hasMore: false, additional: { page: 1 } };
+    }
+  };
+
+  const loadTeeOptions = async (search, loadedOptions, { page }, courseId) => {
+    if (!courseId) return { options: [], hasMore: false, additional: { page: 1 } };
+
+    try {
+      const res = await fetch(
+        `http://localhost:3000/api/tees?course_id=${courseId}&search=${encodeURIComponent(search)}&limit=20&page=${page}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      const data = await res.json();
+
+      const grouped = Object.entries(
+        data.reduce((acc, tee) => {
+          const genderKey = tee.gender.charAt(0).toUpperCase() + tee.gender.slice(1).toLowerCase();
+          if (!acc[genderKey]) acc[genderKey] = [];
+          acc[genderKey].push({
+            label: `${tee.tee_name} ${tee.total_yards ?? 0} yds (${tee.course_rating ?? 0}/${tee.slope_rating ?? 0}) ${tee.number_of_holes ?? 0} holes`,
+            value: tee.id,
+          });
+          return acc;
+        }, {})
+      ).map(([label, options]) => ({ label, options }));
+
+      return { options: grouped, hasMore: false, additional: { page: page + 1 } };
+    } catch (err) {
+      console.error(err);
+      return { options: [], hasMore: false, additional: { page: page + 1 } };
     }
   };
 
@@ -131,19 +162,19 @@ export default function RoundForm({ mode }) {
         `http://localhost:3000/api/tees?course_id=${courseId}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      setTees(await res.json());
+      const data = await res.json();
+      setTees(data);
+      return data; // return for use in edit mode
     } catch (err) {
       console.error(err);
       setMessage("Error fetching tees.");
+      return [];
     }
   };
 
-  const fetchHoles = async (
-    teeId,
-    existingRoundHoles = [],
-    isHoleByHole = 0
-  ) => {
-    if (!teeId) return;
+
+  const fetchHoles = async (teeId, existingRoundHoles = [], isHoleByHole = 0) => {
+    if (!teeId) return [];
     try {
       const res = await fetch(`http://localhost:3000/api/tees/${teeId}/holes`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -164,16 +195,39 @@ export default function RoundForm({ mode }) {
           penalties: existing?.penalties ?? null,
         };
       });
-
       setHoleScores(initScores);
+
+      return data || [];
     } catch (err) {
       console.error(err);
       setMessage("Error fetching holes.");
+      return [];
     }
   };
 
+  const [selectedCourse, setSelectedCourse] = useState(null);
+  const [selectedTee, setSelectedTee] = useState(null);
+
   useEffect(() => {
-    if (token) fetchCourses();
+    if (round.course_id && !selectedCourse) {
+      // Try to find it from loaded courses
+      if (courses.length) {
+        const found = courses.find(c => c.id === Number(round.course_id));
+        if (found) setSelectedCourse({ label: found.course_name, value: found.id });
+      }
+    }
+  }, [round.course_id, courses]);
+
+  useEffect(() => {
+    if (location.state && !initialized) {
+      const { courseId, teeId } = location.state;
+      if (courseId) setRound((prev) => ({ ...prev, course_id: String(courseId) }));
+      if (teeId) setRound((prev) => ({ ...prev, tee_id: String(teeId) }));
+    }
+  }, [location.state, initialized]);
+
+  useEffect(() => {
+    if (token) loadCourseOptions();
   }, [token]);
 
   useEffect(() => {
@@ -181,7 +235,28 @@ export default function RoundForm({ mode }) {
   }, [round.course_id]);
 
   useEffect(() => {
-    if (mode !== "edit" || !id || !token) return;
+    if (mode === "add" && !initialized) {
+      const initAddRound = async () => {
+        // Prefill course/tee from location.state if available
+        if (location.state) {
+          const { courseId, teeId } = location.state;
+          if (courseId) setRound(prev => ({ ...prev, course_id: String(courseId) }));
+          if (teeId) setRound(prev => ({ ...prev, tee_id: String(teeId) }));
+          
+          // Fetch holes for the selected tee and initialize scores to null
+          if (teeId) {
+            await fetchHoles(teeId, [], 0); // empty array -> all hole scores null
+          }
+        }
+        setInitialized(true);
+      };
+
+      initAddRound();
+    }
+  }, [mode, location.state, initialized]);
+
+  useEffect(() => {
+    if (mode !== "edit" || !id || !token || courses.length === 0) return;
 
     const fetchRound = async () => {
       setLoading(true);
@@ -190,6 +265,7 @@ export default function RoundForm({ mode }) {
           headers: { Authorization: `Bearer ${token}` },
         });
         const data = await res.json();
+
         const roundData = {
           date: data.date?.split("T")[0] ?? new Date().toISOString().split("T")[0],
           course_id: data.course_id?.toString() ?? "",
@@ -204,10 +280,34 @@ export default function RoundForm({ mode }) {
           round_holes: data.round_holes || [],
           advanced_stats: data.advanced_stats === 1 ? 1 : 0,
         };
+
         setRound(roundData);
 
-        if (data.tee_id) {
-          await fetchHoles(data.tee_id, data.round_holes || [], roundData.hole_by_hole);
+        // Set selected course now that courses are loaded
+        const foundCourse = courses.find(c => c.id === Number(roundData.course_id));
+        if (foundCourse) {
+          setSelectedCourse({ label: foundCourse.course_name, value: foundCourse.id });
+        }
+
+        // Fetch tees and holes as before...
+        if (roundData.course_id) {
+          const fetchedTees = await fetchTees(roundData.course_id);
+
+          if (fetchedTees.length && roundData.tee_id) {
+            const foundTee = fetchedTees.find(t => t.id === Number(roundData.tee_id));
+            if (foundTee) {
+              setSelectedTee({
+                label: `${foundTee.tee_name} ${foundTee.total_yards ?? 0} yds (${foundTee.course_rating ?? 0}/${foundTee.slope_rating ?? 0}) ${foundTee.number_of_holes ?? 0} holes`,
+                value: foundTee.id,
+                teeObj: foundTee // store full tee object for later use if needed
+              });
+
+              // Fetch holes now that selectedTee is set
+              if (roundData.tee_id) {
+                await fetchHoles(roundData.tee_id, roundData.round_holes || [], roundData.hole_by_hole);
+              }
+            }
+          }
         }
 
         setInitialized(true);
@@ -220,11 +320,46 @@ export default function RoundForm({ mode }) {
     };
 
     fetchRound();
-  }, [id, mode, token]);
+  }, [id, mode, token, courses]);
+
+
+  // ────────────────────────────
+  // Fetch holes when tee changes
+  // ────────────────────────────
+  useEffect(() => {
+    if (!round.tee_id) return;
+
+    const initHoles = async () => {
+      if (mode === "edit") {
+        await fetchHoles(round.tee_id, round.round_holes || [], round.hole_by_hole);
+      } else {
+        // Add mode: initialize all holes with null
+        await fetchHoles(round.tee_id, [], 0);
+      }
+    };
+
+    initHoles();
+  }, [round.tee_id, mode]);
 
   // ────────────────────────────
   // Handlers
   // ────────────────────────────
+  const handleCourseChange = async (option) => {
+    setSelectedCourse(option);
+
+    // Reset tee selection
+    setSelectedTee(null);
+    setRound(prev => ({ ...prev, course_id: option?.value ?? "", tee_id: "" }));
+    setHoles([]);
+    setHoleScores([]);
+    setTees([]); // clear previous tees
+
+    if (option?.value) {
+      const fetchedTees = await fetchTees(option.value);
+      setTees(fetchedTees);
+    }
+  };
+  
   const handleChange = (e) => {
     const { name, value } = e.target;
     if (["score", "fir_hit", "gir_hit", "putts", "penalties"].includes(name)) {
@@ -239,21 +374,22 @@ export default function RoundForm({ mode }) {
   };
 
   const handleHoleScoreChange = (index, field, value) => {
-    setHoleScores((prev) =>
-      prev.map((h, i) =>
-        i !== index
-          ? h
-          : {
-              ...h,
-              [field]:
-                (field === "fir_hit" || field === "gir_hit") && isHBH
-                  ? value
-                  : sanitizeNumeric(value) === ""
-                  ? null
-                  : Number(sanitizeNumeric(value)),
-            }
-      )
-    );
+    setHoleScores((prev) => {
+      const updated = [...prev];       // preserve array identity
+      const hole = updated[index];     // preserve other elements
+
+      updated[index] = {
+        ...hole,
+        [field]:
+          (field === "fir_hit" || field === "gir_hit") && isHBH
+            ? value
+            : sanitizeNumeric(value) === ""
+            ? null
+            : Number(sanitizeNumeric(value)),
+      };
+
+      return updated;
+    });
   };
 
   const toggleHoleByHole = () => {
@@ -363,159 +499,139 @@ export default function RoundForm({ mode }) {
     };
   };
 
-  const renderHoleTable = () => {
+  const renderHoleCards = () => {
     if (!isHBH || !initialized) return null;
+
     const totals = calculateTotals();
     const show = (v) => (v === null ? "–" : v);
 
     return (
-      <div className="hole-table-wrapper">
-        <table className="hole-table">
-          <thead>
-            <tr>
-              <th>Hole #</th>
-              <th>Par</th>
-              <th>Score</th>
-              {hasAdvanced && <th>FIR</th>}
-              {hasAdvanced && <th>GIR</th>}
-              {hasAdvanced && <th>Putts</th>}
-              {hasAdvanced && <th>Penalties</th>}
-            </tr>
-          </thead>
-          <tbody>
-            {holeScores.map((h, idx) => (
-              <tr key={h.hole_id}>
-                <td>{h.hole_number}</td>
-                <td>{h.par}</td>
-                <td>
-                  <input
-                    type="text"
-                    pattern="[0-9]*"
-                    value={formatValue(h.score)}
-                    onChange={(e) => handleHoleScoreChange(idx, "score", e.target.value)}
-                  />
-                </td>
-                {hasAdvanced && (
-                  <>
-                    <td>
-                      <BinaryNullToggle
-                        value={h.fir_hit}
-                        onChange={(val) => handleHoleScoreChange(idx, "fir_hit", val)}
-                        disabled={h.par === 3}
-                      />
-                    </td>
-                    <td>
-                      <BinaryNullToggle
-                        value={h.gir_hit}
-                        onChange={(val) => handleHoleScoreChange(idx, "gir_hit", val)}
-                      />
-                    </td>
-                    <td>
-                      <input
-                        type="text"
-                        pattern="[0-9]*"
-                        value={formatValue(h.putts)}
-                        onChange={(e) => handleHoleScoreChange(idx, "putts", e.target.value)}
-                      />
-                    </td>
-                    <td>
-                      <input
-                        type="text"
-                        pattern="[0-9]*"
-                        value={formatValue(h.penalties)}
-                        onChange={(e) => handleHoleScoreChange(idx, "penalties", e.target.value)}
-                      />
-                    </td>
-                  </>
-                )}
-              </tr>
-            ))}
-            {holeScores.length > 0 && (
-              <tr className="total-row">
-                <td>Total</td>
-                <td>{show(totals.par)}</td>
-                <td>{show(totals.score)}</td>
-                {hasAdvanced && <td>{show(totals.fir_hit)}</td>}
-                {hasAdvanced && <td>{show(totals.gir_hit)}</td>}
-                {hasAdvanced && <td>{show(totals.putts)}</td>}
-                {hasAdvanced && <td>{show(totals.penalties)}</td>}
-              </tr>
-            )}
-          </tbody>
-        </table>
+      <div>
+        {holeScores.map((h, idx) => (
+          <HoleCard
+            key={h.hole_id}
+            hole={h.hole_number}
+            par={h.par}
+            score={h.score}
+            fir_hit={h.fir_hit}
+            gir_hit={h.gir_hit}
+            putts={h.putts}
+            penalties={h.penalties}
+            hasAdvanced={hasAdvanced}
+            onChange={(holeNumber, field, value) =>
+              handleHoleScoreChange(idx, field, value)
+            }
+          />
+        ))}
+
+        {holeScores.length > 0 && (
+          <div className="card hole-card-total">
+            <div className="hole-header">Totals</div>
+            <div className="hole-card-grid">
+              <div className="hole-field"><strong>Par:</strong> {show(totals.par)}</div>
+              <div className="hole-field"><strong>Score:</strong> {show(totals.score)}</div>
+              {hasAdvanced && (
+                <>
+                  <div className="hole-field"><strong>FIR:</strong> {show(totals.fir_hit)}</div>
+                  <div className="hole-field"><strong>Putts:</strong> {show(totals.putts)}</div>
+                  <div className="hole-field"><strong>GIR:</strong> {show(totals.gir_hit)}</div>
+                  <div className="hole-field"><strong>Penalties:</strong> {show(totals.penalties)}</div>
+                </>
+              )}
+            </div>
+          </div>
+          
+        )}
       </div>
     );
   };
 
-  const groupedTees = tees.reduce((acc, tee) => {
-    const genderKey = tee.gender.charAt(0).toUpperCase() + tee.gender.slice(1).toLowerCase();
-    if (!acc[genderKey]) acc[genderKey] = [];
-    acc[genderKey].push(tee);
-    return acc;
-  }, {});
+  const groupedTeeOptions = useMemo(() => {
+    return Object.entries(
+      tees.reduce((acc, tee) => {
+        const genderKey = tee.gender.charAt(0).toUpperCase() + tee.gender.slice(1).toLowerCase();
+        if (!acc[genderKey]) acc[genderKey] = [];
+        acc[genderKey].push({
+          label: `${tee.tee_name} ${tee.total_yards ?? 0} yds (${tee.course_rating ?? 0}/${tee.slope_rating ?? 0}) ${tee.number_of_holes ?? 0} holes`,
+          value: tee.id,
+        });
+        return acc;
+      }, {})
+    ).map(([label, options]) => ({ label, options }));
+  }, [tees]);
 
   // ────────────────────────────
   // Render
   // ────────────────────────────
   return (
-    <div className="round-form-page">
-      <h2>{mode === "add" ? "Add Round" : "Edit Round"}</h2>
-
+    <div className="page-stack">
       {message && (
-        <p className={`round-form-message ${message.startsWith("❌") ? "error" : "success"}`}>
+        <p className={`message ${message.startsWith("❌") ? "error" : "success"}`}>
           {message}
         </p>
       )}
 
-      <form onSubmit={handleSubmit} className="round-form">
-        <div className="form-field">
-          <label>Date</label>
-          <input type="date" name="date" value={round.date} onChange={handleChange} required />
+      <form onSubmit={handleSubmit} className="form">
+        <div className="form-row">
+          <label className="form-label">Date</label>
+          <input type="date" name="date" value={round.date} onChange={handleChange} className="form-input" required />
         </div>
 
-        <div className="form-field">
-          <label>Course</label>
-          <select name="course_id" value={round.course_id} onChange={handleChange} required>
-            <option value="">-- Select Course --</option>
-            {courses.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.course_name}
-              </option>
-            ))}
-          </select>
+        <div className="form-row">
+          <label className="form-label">Course</label>
+          <AsyncPaginate
+            value={selectedCourse}
+            loadOptions={loadCourseOptions}
+            onChange={option => {
+              setSelectedCourse(option);
+              setSelectedTee(null);
+              setRound(prev => ({ ...prev, course_id: option?.value ?? "", tee_id: "" }));
+              setHoles([]);
+              setHoleScores([]);
+            }}
+            additional={{ page: 1 }}
+            placeholder="Select Course"
+            isClearable
+          />
         </div>
 
-        <div className="form-field">
-          <label>Tee</label>
-          <select
-            name="tee_id"
-            value={round.tee_id}
-            onChange={handleChange}
-            required
-            disabled={!round.course_id}
-          >
-            <option value="">-- Select Tee --</option>
-            {Object.entries(groupedTees).map(([gender, teesGroup]) => (
-              <optgroup key={gender} label={gender}>
-                {teesGroup.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {`${t.tee_name} ${t.total_yards ?? 0} yds (${t.course_rating ?? 0}/${t.slope_rating ?? 0})`}
-                  </option>
-                ))}
-              </optgroup>
-            ))}
-          </select>
+        <div className="form-row">
+          <label className="form-label">Tee</label>
+          <AsyncPaginate
+            key={selectedCourse?.value || "no-course"}  // force remount
+            value={selectedTee}
+            loadOptions={(search, loadedOptions, additional) =>
+              loadTeeOptions(search, loadedOptions, additional, selectedCourse?.value)
+            }
+            isGrouped
+            onChange={async (option) => {
+              setSelectedTee(option);
+              const teeId = option?.value ?? "";
+              setRound(prev => ({ ...prev, tee_id: teeId }));
+
+              if (teeId) {
+                const holesData = await fetchHoles(teeId);
+                const totalPar = holesData.reduce((sum, h) => sum + (h.par ?? 0), 0);
+                setRound(prev => ({ ...prev, par_total: totalPar }));
+              }
+
+            }}
+            isDisabled={!selectedCourse}
+            placeholder="Select Tee"
+            isClearable
+            additional={{ page: 1 }}
+          />
         </div>
 
         {initialized && (
           <>
-            <button type="button" className="toggle-btn" onClick={toggleHoleByHole}>
+            <button type="button" className="btn btn-toggle" onClick={toggleHoleByHole}>
               {isHBH ? "Switch to Quick Score Mode" : "Switch to Hole-by-Hole Mode"}
             </button>
 
             <button
               type="button"
-              className="toggle-btn"
+              className="btn btn-toggle"
               onClick={() =>
                 setRound((prev) => ({ ...prev, advanced_stats: hasAdvanced ? 0 : 1 }))
               }
@@ -526,48 +642,64 @@ export default function RoundForm({ mode }) {
         )}
 
         {!isHBH && (
-          <div className="form-field">
-            <label>Score</label>
+          <div className="form-row">
+            <label className="form-label">Par</label>
+            <input type="text" value={round.par_total ?? ""} className="form-input" disabled />
+          </div>
+        )}
+
+        {!isHBH && (
+          <div className="form-row">
+            <label className="form-label">Score</label>
             <input
               type="text"
               pattern="[0-9]*"
               name="score"
               value={formatValue(round.score)}
               onChange={handleChange}
+              className="form-input"
               required
             />
           </div>
         )}
 
         {!isHBH && hasAdvanced && (
-          <div className="advanced-stats">
-            {["fir_hit", "gir_hit", "putts", "penalties"].map((field) => (
-              <div key={field} className="form-field">
-                <label>{field.toUpperCase()}</label>
-                <input
-                  type="text"
-                  pattern="[0-9]*"
-                  name={field}
-                  value={formatValue(round[field])}
-                  onChange={handleChange}
-                />
-              </div>
-            ))}
-          </div>
+          <>
+            {["fir_hit", "gir_hit", "putts", "penalties"].map((field) => {
+              const labelMap = {
+                fir_hit: "FIR",
+                gir_hit: "GIR",
+                putts: "Putts",
+                penalties: "Penalties",
+              };
+
+              return (
+                <div key={field} className="form-row">
+                  <label className="form-label">{labelMap[field]}</label>
+                  <input
+                    type="text"
+                    pattern="[0-9]*"
+                    name={field}
+                    value={formatValue(round[field])}
+                    onChange={handleChange}
+                    className="form-input"
+                  />
+                </div>
+              );
+            })}
+          </>
         )}
 
-        {renderHoleTable()}
+        {renderHoleCards()}
 
-        <div className="form-field">
-          <label>Notes</label>
-          <textarea name="notes" value={round.notes} onChange={handleChange} rows={3} />
+        <div className="form-row">
+          <label className="form-label">Notes</label>
+          <textarea name="notes" value={round.notes} onChange={handleChange} rows={3} className="form-input" />
         </div>
 
-        <div className="form-buttons">
-          <button type="button" onClick={() => navigate(origin)} className="cancel-btn">
-            Cancel
-          </button>
-          <button type="submit" disabled={loading} className="save-btn">
+        <div className="form-actions">
+          <button type="button" onClick={() => navigate(origin)} className="btn btn-cancel">Cancel</button>
+          <button type="submit" disabled={loading} className="btn btn-save">
             {loading ? (mode === "add" ? "Adding..." : "Updating...") : mode === "add" ? "Add Round" : "Update Round"}
           </button>
         </div>

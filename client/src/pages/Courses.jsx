@@ -1,8 +1,7 @@
-import { useContext, useEffect, useState } from "react";
+import { useContext, useEffect, useState, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
 import CourseCard from "../components/CourseCard";
-import "../css/Courses.css";
 
 export default function Courses() {
   const { auth, logout } = useContext(AuthContext);
@@ -11,10 +10,13 @@ export default function Courses() {
 
   const [courses, setCourses] = useState([]);
   const [filteredCourses, setFilteredCourses] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
 
+  const observer = useRef();
   const BASE_URL = "http://localhost:3000";
 
   // Redirect if not logged in
@@ -23,13 +25,51 @@ export default function Courses() {
   }, [token, navigate]);
 
   // Fetch courses
+  const fetchCourses = async (pageToFetch) => {
+    setLoading(true);
+    setMessage("");
+    try {
+      const res = await fetch(`${BASE_URL}/api/courses?limit=20&page=${pageToFetch}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if ([401, 403].includes(res.status)) {
+        logout();
+        return navigate("/login", { replace: true });
+      }
+
+      const data = await res.json();
+      if (!Array.isArray(data)) throw new Error("Invalid data received from server");
+
+      setCourses((prev) => {
+        const map = new Map(prev.map((c) => [c.id, c]));
+        data.forEach((c) => map.set(c.id, c));
+        return Array.from(map.values());
+      });
+
+      setHasMore(data.length === 20);
+      setPage(pageToFetch);
+    } catch (err) {
+      setMessage(err.message || "Error fetching courses");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Initial fetch
   useEffect(() => {
-    if (token) fetchCourses();
+    if (token) {
+      setCourses([]);
+      setFilteredCourses([]);
+      setPage(1);
+      setHasMore(true);
+      fetchCourses(1);
+    }
   }, [token]);
 
-  // Filter courses based on search
+  // Filter courses by search
   useEffect(() => {
-    if (search.trim() === "") {
+    if (!search.trim()) {
       setFilteredCourses(courses);
     } else {
       const lower = search.toLowerCase();
@@ -43,69 +83,55 @@ export default function Courses() {
     }
   }, [search, courses]);
 
-  const fetchCourses = async () => {
-    setLoading(true);
-    setMessage("");
-    try {
-      const res = await fetch(`${BASE_URL}/api/courses`, {
-        headers: { Authorization: `Bearer ${token}` },
+  // Infinite scroll
+  const lastCourseRef = useCallback(
+    (node) => {
+      if (loading) return;
+      if (observer.current) observer.current.disconnect();
+      observer.current = new IntersectionObserver((entries) => {
+        if (entries[0].isIntersecting && hasMore) fetchCourses(page + 1);
       });
-
-      if (res.status === 401 || res.status === 403) {
-        logout();
-        return navigate("/login", { replace: true });
-      }
-
-      const data = await res.json();
-      if (!Array.isArray(data)) throw new Error("Invalid data received from server");
-
-      setCourses(data);
-      setFilteredCourses(data);
-
-      if (data.length === 0) setMessage("No courses found.");
-    } catch (err) {
-      console.error("Fetch error:", err);
-      setMessage(err.message || "Error fetching courses");
-    } finally {
-      setLoading(false);
-    }
-  };
+      if (node) observer.current.observe(node);
+    },
+    [loading, hasMore, page]
+  );
 
   return (
-    <div className="courses-page">
-      <h2 className="courses-title">Courses</h2>
-
+    <div className="page-stack">
       {message && (
         <p className={`courses-message ${message.includes("Error") ? "error" : "success"}`}>
           {message}
         </p>
       )}
 
-      {/* Search bar */}
       <input
         type="text"
-        placeholder="Search by Course or City..."
+        placeholder="Search Course"
         value={search}
         onChange={(e) => setSearch(e.target.value)}
-        className="courses-search"
+        className="form-input"
       />
 
-      {loading ? (
-        <p>Loading courses...</p>
-      ) : filteredCourses.length === 0 ? (
+      {filteredCourses.length === 0 && !loading ? (
         <p>No courses match your search.</p>
       ) : (
-        <div className="courses-grid">
-          {filteredCourses.map((course) => (
-            <CourseCard
-              key={course.id}
-              course={course}
-              locations={course.location ? [course.location] : []}
-              tees={[...(course.tees.male || []), ...(course.tees.female || [])]}
-            />
-          ))}
+        <div className="grid grid-1" style={{ gap: 16 }}>
+          {filteredCourses.map((course, index) => {
+            const isLast = index === filteredCourses.length - 1;
+            return (
+              <div key={course.id} ref={isLast ? lastCourseRef : null}>
+                <CourseCard
+                  course={course}
+                  locations={course.location ? [course.location] : []}
+                  tees={[...(course.tees.male || []), ...(course.tees.female || [])]}
+                />
+              </div>
+            );
+          })}
         </div>
       )}
+
+      {loading && <p>Loading courses...</p>}
     </div>
   );
 }

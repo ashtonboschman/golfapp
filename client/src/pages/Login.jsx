@@ -1,7 +1,7 @@
 import { useState, useContext, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
-import "../css/Login.css";
+import "../css/App.css"; // ensure this is imported
 
 export default function Login() {
   const navigate = useNavigate();
@@ -11,7 +11,6 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
 
-  // Lock scroll
   useEffect(() => {
     const originalOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -57,16 +56,15 @@ export default function Login() {
   };
 
   return (
-    <div className="login-page">
-      <div className="login-container">
-        <h2 style={{ textAlign: "center" }}>{isRegister ? "Register" : "Login"}</h2>
+    <div className="page-stack">
+      <div className="card login-card">
         {message && (
-          <p className={`login-message ${message.includes("Error") ? "error" : "success"}`}>
+          <p className={`message ${message.includes("Error") ? "error" : "success"}`}>
             {message}
           </p>
         )}
 
-        <form onSubmit={handleSubmit} className="login-form">
+        <form onSubmit={handleSubmit} className="form">
           {isRegister && (
             <input
               name="username"
@@ -74,7 +72,7 @@ export default function Login() {
               value={form.username}
               onChange={handleChange}
               required
-              className="login-input"
+              className="form-input"
             />
           )}
           <input
@@ -84,7 +82,7 @@ export default function Login() {
             value={form.email}
             onChange={handleChange}
             required
-            className="login-input"
+            className="form-input"
           />
           <input
             name="password"
@@ -93,14 +91,17 @@ export default function Login() {
             value={form.password}
             onChange={handleChange}
             required
-            className="login-input"
+            className="form-input"
           />
-          <button type="submit" className="login-button" disabled={loading}>
+          <button type="submit" className="btn btn-save" disabled={loading}>
             {loading ? (isRegister ? "Registering..." : "Logging in...") : isRegister ? "Register" : "Login"}
           </button>
         </form>
 
-        <button onClick={() => setIsRegister(!isRegister)} className="login-toggle-button">
+        <button
+          onClick={() => setIsRegister(!isRegister)}
+          className="btn btn-toggle"
+        >
           {isRegister ? "Already have an account? Login" : "Need an account? Register"}
         </button>
       </div>
