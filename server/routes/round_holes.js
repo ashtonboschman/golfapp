@@ -14,11 +14,7 @@ const query = (sql, params) =>
 const recalcRoundTotals = async (roundId) => {
   const totals = await query(
     `
-    SELECT score,
-           fir_hit,
-           gir_hit,
-           putts,
-           penalties
+    SELECT score, fir_hit, gir_hit, putts, penalties
     FROM round_holes
     WHERE round_id = ?
   `,
@@ -39,7 +35,7 @@ const recalcRoundTotals = async (roundId) => {
       WHERE id = ?
     `,
       [
-        holes.reduce((sum, h) => sum + (h.score ?? 0), 0), // score always sums 0 if null
+        holes.reduce((sum, h) => sum + (h.score ?? 0), 0),
         sumField("fir_hit"),
         sumField("gir_hit"),
         sumField("putts"),
@@ -56,15 +52,12 @@ const recalcRoundTotals = async (roundId) => {
 // ============================================================================
 router.get("/rounds/:round_id/holes", auth, async (req, res) => {
   try {
-    const roundId = req.params.round_id;
-
-    const results = await query(
-      `SELECT * FROM round_holes WHERE round_id = ? ORDER BY hole_id ASC`,
-      [roundId]
-    );
+    const roundId = parseInt(req.params.round_id);
+    const results = await query(`SELECT * FROM round_holes WHERE round_id = ? ORDER BY hole_id ASC`, [roundId]);
 
     res.json({
-      round_id: parseInt(roundId),
+      type: "success",
+      round_id: roundId,
       round_holes: results.map((rh) => ({
         id: rh.id,
         round_id: rh.round_id,
@@ -78,7 +71,7 @@ router.get("/rounds/:round_id/holes", auth, async (req, res) => {
     });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Database error", details: err });
+    res.status(500).json({ type: "error", message: "Database error", details: err });
   }
 });
 
@@ -87,26 +80,29 @@ router.get("/rounds/:round_id/holes", auth, async (req, res) => {
 // ============================================================================
 router.get("/:id", auth, async (req, res) => {
   try {
-    const id = req.params.id;
+    const id = parseInt(req.params.id);
     const results = await query(`SELECT * FROM round_holes WHERE id = ?`, [id]);
 
     if (!results.length)
-      return res.status(404).json({ error: "Round hole entry not found" });
+      return res.status(404).json({ type: "error", message: "Round hole entry not found" });
 
     const rh = results[0];
     res.json({
-      id: rh.id,
-      round_id: rh.round_id,
-      hole_id: rh.hole_id,
-      score: rh.score,
-      fir_hit: rh.fir_hit,
-      gir_hit: rh.gir_hit,
-      putts: rh.putts,
-      penalties: rh.penalties,
+      type: "success",
+      round_hole: {
+        id: rh.id,
+        round_id: rh.round_id,
+        hole_id: rh.hole_id,
+        score: rh.score,
+        fir_hit: rh.fir_hit,
+        gir_hit: rh.gir_hit,
+        putts: rh.putts,
+        penalties: rh.penalties,
+      },
     });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Database error", details: err });
+    res.status(500).json({ type: "error", message: "Database error", details: err });
   }
 });
 
@@ -115,10 +111,10 @@ router.get("/:id", auth, async (req, res) => {
 // ============================================================================
 router.post("/rounds/:round_id/holes", auth, async (req, res) => {
   try {
-    const roundId = req.params.round_id;
+    const roundId = parseInt(req.params.round_id);
     const { hole_id, score, fir_hit, gir_hit, putts, penalties } = req.body;
 
-    if (!hole_id) return res.status(400).json({ error: "hole_id is required" });
+    if (!hole_id) return res.status(400).json({ type: "error", message: "hole_id is required" });
 
     const result = await query(
       `INSERT INTO round_holes (round_id, hole_id, score, fir_hit, gir_hit, putts, penalties)
@@ -129,10 +125,10 @@ router.post("/rounds/:round_id/holes", auth, async (req, res) => {
     const newEntry = await query(`SELECT * FROM round_holes WHERE id = ?`, [result.insertId]);
     const rh = newEntry[0];
 
-    // Recalculate totals for the round
     await recalcRoundTotals(roundId);
 
-    res.json({
+    res.status(201).json({
+      type: "success",
       message: "Round hole entry created",
       round_hole: {
         id: rh.id,
@@ -147,7 +143,7 @@ router.post("/rounds/:round_id/holes", auth, async (req, res) => {
     });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Database error", details: err });
+    res.status(500).json({ type: "error", message: "Database error", details: err });
   }
 });
 
@@ -156,7 +152,7 @@ router.post("/rounds/:round_id/holes", auth, async (req, res) => {
 // ============================================================================
 router.put("/:id", auth, async (req, res) => {
   try {
-    const id = req.params.id;
+    const id = parseInt(req.params.id);
     const allowedFields = ["hole_id", "score", "fir_hit", "gir_hit", "putts", "penalties"];
 
     const updates = [];
@@ -169,19 +165,18 @@ router.put("/:id", auth, async (req, res) => {
       }
     }
 
-    if (!updates.length) return res.status(400).json({ error: "No valid fields provided" });
+    if (!updates.length) return res.status(400).json({ type: "error", message: "No valid fields provided" });
 
     values.push(id);
-
     await query(`UPDATE round_holes SET ${updates.join(", ")} WHERE id = ?`, values);
 
     const updated = await query(`SELECT * FROM round_holes WHERE id = ?`, [id]);
     const rh = updated[0];
 
-    // Recalculate totals for the round
     await recalcRoundTotals(rh.round_id);
 
     res.json({
+      type: "success",
       message: "Round hole entry updated",
       round_hole: {
         id: rh.id,
@@ -196,7 +191,7 @@ router.put("/:id", auth, async (req, res) => {
     });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Database error", details: err });
+    res.status(500).json({ type: "error", message: "Database error", details: err });
   }
 });
 
@@ -205,22 +200,19 @@ router.put("/:id", auth, async (req, res) => {
 // ============================================================================
 router.delete("/:id", auth, async (req, res) => {
   try {
-    const id = req.params.id;
+    const id = parseInt(req.params.id);
 
-    // Fetch the round_id before deleting
     const results = await query(`SELECT round_id FROM round_holes WHERE id = ?`, [id]);
-    if (!results.length) return res.status(404).json({ error: "Round hole entry not found" });
+    if (!results.length) return res.status(404).json({ type: "error", message: "Round hole entry not found" });
+
     const roundId = results[0].round_id;
-
     await query(`DELETE FROM round_holes WHERE id = ?`, [id]);
-
-    // Recalculate totals for the round
     await recalcRoundTotals(roundId);
 
-    res.json({ message: "Round hole entry deleted", id });
+    res.json({ type: "success", message: "Round hole entry deleted", id });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Database error", details: err });
+    res.status(500).json({ type: "error", message: "Database error", details: err });
   }
 });
 

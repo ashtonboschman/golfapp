@@ -24,7 +24,7 @@ const buildLocationResponse = async (location) => {
 };
 
 // ============================================================================
-// GET ALL LOCATIONS (with full course structure)
+// GET ALL LOCATIONS
 // ============================================================================
 router.get("/", auth, async (req, res) => {
   try {
@@ -34,7 +34,7 @@ router.get("/", auth, async (req, res) => {
        JOIN courses c ON l.course_id = c.id
        ORDER BY c.club_name ASC, c.course_name ASC, l.id ASC`
     );
-    if (!locations.length) return res.json([]);
+    if (!locations.length) return res.json({ type: "success", message: "No locations found", results: [] });
 
     const response = [];
     for (const loc of locations) {
@@ -42,10 +42,10 @@ router.get("/", auth, async (req, res) => {
       response.push(fullLoc);
     }
 
-    res.json(response);
+    res.json({ type: "success", results: response });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Database error", details: err });
+    res.status(500).json({ type: "error", message: "Database error", details: err });
   }
 });
 
@@ -62,13 +62,13 @@ router.get("/:id", auth, async (req, res) => {
        WHERE l.id = ?`,
       [locationId]
     );
-    if (!locations.length) return res.status(404).json({ error: "Location not found" });
+    if (!locations.length) return res.status(404).json({ type: "error", message: "Location not found" });
 
     const fullLocation = await buildLocationResponse(locations[0]);
-    res.json(fullLocation);
+    res.json({ type: "success", location: fullLocation });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Database error", details: err });
+    res.status(500).json({ type: "error", message: "Database error", details: err });
   }
 });
 
@@ -78,10 +78,10 @@ router.get("/:id", auth, async (req, res) => {
 router.post("/", auth, async (req, res) => {
   try {
     const { course_id, address, city, state, country, latitude, longitude } = req.body;
-    if (!course_id) return res.status(400).json({ error: "course_id is required" });
+    if (!course_id) return res.status(400).json({ type: "error", message: "course_id is required" });
 
     const courseCheck = await query(`SELECT id FROM courses WHERE id = ?`, [course_id]);
-    if (!courseCheck.length) return res.status(400).json({ error: "Course not found" });
+    if (!courseCheck.length) return res.status(400).json({ type: "error", message: "Course not found" });
 
     const result = await query(
       `INSERT INTO locations (course_id, address, city, state, country, latitude, longitude)
@@ -90,10 +90,12 @@ router.post("/", auth, async (req, res) => {
     );
 
     const newLocation = await query(`SELECT * FROM locations WHERE id = ?`, [result.insertId]);
-    res.json(await buildLocationResponse(newLocation[0]));
+    const fullLocation = await buildLocationResponse(newLocation[0]);
+
+    res.status(201).json({ type: "success", message: "Location created", location: fullLocation });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Database error", details: err });
+    res.status(500).json({ type: "error", message: "Database error", details: err });
   }
 });
 
@@ -114,18 +116,20 @@ router.put("/:id", auth, async (req, res) => {
       }
     }
 
-    if (!updates.length) return res.status(400).json({ error: "No valid fields provided for update" });
+    if (!updates.length) return res.status(400).json({ type: "error", message: "No valid fields provided for update" });
 
     values.push(locationId);
     const sql = `UPDATE locations SET ${updates.join(", ")}, updated_date = NOW() WHERE id = ?`;
     const result = await query(sql, values);
-    if (result.affectedRows === 0) return res.status(404).json({ error: "Location not found" });
+    if (result.affectedRows === 0) return res.status(404).json({ type: "error", message: "Location not found" });
 
     const updatedLocation = await query(`SELECT * FROM locations WHERE id = ?`, [locationId]);
-    res.json(await buildLocationResponse(updatedLocation[0]));
+    const fullLocation = await buildLocationResponse(updatedLocation[0]);
+
+    res.json({ type: "success", message: "Location updated", location: fullLocation });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Database error", details: err });
+    res.status(500).json({ type: "error", message: "Database error", details: err });
   }
 });
 
@@ -136,12 +140,12 @@ router.delete("/:id", auth, async (req, res) => {
   try {
     const locationId = req.params.id;
     const result = await query(`DELETE FROM locations WHERE id = ?`, [locationId]);
-    if (result.affectedRows === 0) return res.status(404).json({ error: "Location not found" });
+    if (result.affectedRows === 0) return res.status(404).json({ type: "error", message: "Location not found" });
 
-    res.json({ message: "Location deleted" });
+    res.json({ type: "success", message: "Location deleted", locationId });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Database error", details: err });
+    res.status(500).json({ type: "error", message: "Database error", details: err });
   }
 });
 

@@ -16,20 +16,24 @@ router.get("/:id", auth, async (req, res) => {
   try {
     const holeId = req.params.id;
     const results = await query(`SELECT * FROM holes WHERE id = ?`, [holeId]);
-    if (!results.length) return res.status(404).json({ error: "Hole not found" });
+    if (!results.length) 
+      return res.status(404).json({ type: "error", message: "Hole not found" });
 
     const h = results[0];
     res.json({
-      id: h.id,
-      tee_id: h.tee_id,
-      hole_number: h.hole_number,
-      par: h.par,
-      yardage: h.yardage,
-      handicap: h.handicap
+      type: "success",
+      hole: {
+        id: h.id,
+        tee_id: h.tee_id,
+        hole_number: h.hole_number,
+        par: h.par,
+        yardage: h.yardage,
+        handicap: h.handicap
+      }
     });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Database error", details: err });
+    res.status(500).json({ type: "error", message: "Database error", details: err });
   }
 });
 
@@ -40,7 +44,8 @@ router.post("/tees/:tee_id/holes", auth, async (req, res) => {
   try {
     const teeId = req.params.tee_id;
     const { hole_number, par, yardage, handicap } = req.body;
-    if (hole_number === undefined) return res.status(400).json({ error: "hole_number is required" });
+    if (hole_number === undefined) 
+      return res.status(400).json({ type: "error", message: "hole_number is required" });
 
     const result = await query(
       `INSERT INTO holes (tee_id, hole_number, par, yardage, handicap) VALUES (?, ?, ?, ?, ?)`,
@@ -50,7 +55,8 @@ router.post("/tees/:tee_id/holes", auth, async (req, res) => {
     const newHole = await query(`SELECT * FROM holes WHERE id = ?`, [result.insertId]);
     const h = newHole[0];
 
-    res.json({
+    res.status(201).json({
+      type: "success",
       message: "Hole created",
       hole: {
         id: h.id,
@@ -63,7 +69,7 @@ router.post("/tees/:tee_id/holes", auth, async (req, res) => {
     });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Database error", details: err });
+    res.status(500).json({ type: "error", message: "Database error", details: err });
   }
 });
 
@@ -84,7 +90,8 @@ router.put("/:id", auth, async (req, res) => {
       }
     }
 
-    if (!updates.length) return res.status(400).json({ error: "No valid fields provided" });
+    if (!updates.length) 
+      return res.status(400).json({ type: "error", message: "No valid fields provided" });
 
     values.push(holeId);
     await query(`UPDATE holes SET ${updates.join(", ")} WHERE id = ?`, values);
@@ -93,6 +100,7 @@ router.put("/:id", auth, async (req, res) => {
     const h = updatedHole[0];
 
     res.json({
+      type: "success",
       message: "Hole updated",
       hole: {
         id: h.id,
@@ -105,7 +113,7 @@ router.put("/:id", auth, async (req, res) => {
     });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Database error", details: err });
+    res.status(500).json({ type: "error", message: "Database error", details: err });
   }
 });
 
@@ -116,12 +124,13 @@ router.delete("/:id", auth, async (req, res) => {
   try {
     const holeId = req.params.id;
     const result = await query(`DELETE FROM holes WHERE id = ?`, [holeId]);
-    if (result.affectedRows === 0) return res.status(404).json({ error: "Hole not found" });
+    if (result.affectedRows === 0) 
+      return res.status(404).json({ type: "error", message: "Hole not found" });
 
-    res.json({ message: "Hole deleted", holeId });
+    res.json({ type: "success", message: "Hole deleted", holeId });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Database error", details: err });
+    res.status(500).json({ type: "error", message: "Database error", details: err });
   }
 });
 

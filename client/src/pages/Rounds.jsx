@@ -1,19 +1,19 @@
-// client/src/pages/Rounds.jsx
 import { useContext, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
+import { useMessage } from "../context/MessageContext";
 import RoundCard from "../components/RoundCard";
 
 export default function Rounds() {
   const { auth, logout } = useContext(AuthContext);
   const token = auth?.token;
   const navigate = useNavigate();
+  const { showMessage, clearMessage } = useMessage();
 
   const [rounds, setRounds] = useState([]);
   const [filteredRounds, setFilteredRounds] = useState([]);
   const [tees, setTees] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [message, setMessage] = useState("");
   const [search, setSearch] = useState("");
 
   const BASE_URL = "http://localhost:3000";
@@ -54,12 +54,14 @@ export default function Rounds() {
       setTees(data);
     } catch (err) {
       console.error("Fetch tees error:", err);
+      showMessage(err.message || "Error fetching tees", "error");
     }
   };
 
   const fetchRounds = async () => {
+    clearMessage();
     setLoading(true);
-    setMessage("");
+
     try {
       const res = await fetch(`${BASE_URL}/api/rounds`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -75,11 +77,18 @@ export default function Rounds() {
         throw new Error(errData.message || errData.error || "Error fetching rounds");
       }
 
-      const data = await res.json();
-      const sorted = data.sort((a, b) => new Date(b.date) - new Date(a.date));
+      const result = await res.json();
+      const roundsData = result.rounds || [];
+
+      // Ensure tees are loaded before mapping
+      if (!tees.length) {
+        await fetchTees();
+      }
+
+      const sorted = roundsData.sort((a, b) => new Date(b.date) - new Date(a.date));
 
       const flattenedRounds = sorted.map((r) => {
-        const teeData = tees.find((t) => t.id === r.tee?.tee_id);
+        const teeData = tees.find((t) => t.id === r.tee?.id);
         return {
           id: r.id,
           date: r.date,
@@ -91,7 +100,7 @@ export default function Rounds() {
           par: r.tee?.par_total ?? null,
           course_name: r.course?.course_name ?? "-",
           city: r.location?.city ?? "-",
-          tee_id: r.tee?.tee_id ?? null,
+          tee_id: r.tee?.id ?? null,
           tee_name: teeData?.tee_name ?? r.tee?.tee_name ?? "-",
           notes: r.notes ?? null,
           hole_by_hole: r.hole_by_hole ?? null,
@@ -101,10 +110,12 @@ export default function Rounds() {
       setRounds(flattenedRounds);
       setFilteredRounds(flattenedRounds);
 
-      if (!data.length) setMessage("No rounds found. Add your first round!");
+      if (!roundsData.length) {
+        showMessage("No rounds found. Add your first round!", "success");
+      }
     } catch (err) {
       console.error("Fetch rounds error:", err);
-      setMessage(err.message || "Error fetching rounds");
+      showMessage(err.message || "Error fetching rounds", "error");
     } finally {
       setLoading(false);
     }
@@ -127,18 +138,12 @@ export default function Rounds() {
       fetchRounds();
     } catch (err) {
       console.error("Delete round error:", err);
-      setMessage(err.message || "Error deleting round");
+      showMessage(err.message || "Error deleting round", "error");
     }
   };
 
   return (
     <div className="page-stack">
-      {message && (
-        <p className={`message ${message.toLowerCase().includes("error") ? "error" : "success"}`}>
-          {message}
-        </p>
-      )}
-
       <input
         type="text"
         placeholder="Search Rounds"

@@ -1,22 +1,26 @@
 import { useState, useContext, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
-import "../css/App.css"; // ensure this is imported
+import { useMessage } from "../context/MessageContext";
+import "../css/App.css";
 
 export default function Login() {
   const navigate = useNavigate();
   const { auth, login } = useContext(AuthContext);
+  const { showMessage, clearMessage } = useMessage();
+
   const [isRegister, setIsRegister] = useState(false);
   const [form, setForm] = useState({ username: "", email: "", password: "" });
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState("");
 
+  // Lock scroll while on login page
   useEffect(() => {
     const originalOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => { document.body.style.overflow = originalOverflow; };
   }, []);
 
+  // Redirect if already logged in
   useEffect(() => {
     if (auth?.user) navigate("/dashboard", { replace: true });
   }, [auth, navigate]);
@@ -26,7 +30,8 @@ export default function Login() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setMessage("");
+    clearMessage();
+
     const BASE_URL = "http://localhost:3000";
     const endpoint = isRegister ? "/api/users/register" : "/api/users/login";
 
@@ -37,19 +42,22 @@ export default function Login() {
         body: JSON.stringify(form),
       });
       const data = await res.json();
+
       if (!res.ok) throw new Error(data.message || "Server error");
 
       if (!isRegister) {
+        // Login
         login({ user: data.user, token: data.token });
         navigate("/dashboard", { replace: true });
       } else {
-        setMessage("✅ Registered! You can now login.");
+        // Registration successful
+        showMessage(data.message || "Registered! You can now login", data.type || "success");
         setIsRegister(false);
         setForm({ username: "", email: "", password: "" });
       }
     } catch (err) {
       console.error("Login/register error:", err);
-      setMessage(err.message || "Server error. Check console.");
+      showMessage(err.message || "Server error. Check console", err.type || "error");
     } finally {
       setLoading(false);
     }
@@ -58,12 +66,6 @@ export default function Login() {
   return (
     <div className="page-stack">
       <div className="card login-card">
-        {message && (
-          <p className={`message ${message.includes("Error") ? "error" : "success"}`}>
-            {message}
-          </p>
-        )}
-
         <form onSubmit={handleSubmit} className="form">
           {isRegister && (
             <input

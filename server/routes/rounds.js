@@ -19,10 +19,8 @@ async function recalcRoundTotals(roundId, advanced_stats) {
   );
   if (!holes.length) return;
 
-  // Score: sum non-null
   const totalScore = holes.reduce((sum, h) => sum + (h.score ?? 0), 0);
 
-  // Advanced stats: only sum if advanced_stats = 1
   const totals = { fir_hit: null, gir_hit: null, putts: null, penalties: null };
 
   if (advanced_stats) {
@@ -44,7 +42,6 @@ async function recalcRoundTotals(roundId, advanced_stats) {
     [totalScore, totals.fir_hit, totals.gir_hit, totals.putts, totals.penalties, new Date(), roundId]
   );
 }
-
 
 // ---------------------------------------------
 // Helper: Format DB row into API-friendly shape
@@ -82,7 +79,7 @@ function formatRoundRow(row) {
       city: row.city || "-",
       state: row.state || null,
       address: row.address || null,
-    }
+    },
   };
 }
 
@@ -108,20 +105,20 @@ router.get("/", auth, async (req, res) => {
     );
 
     const formatted = rounds.map(formatRoundRow);
-    res.json(formatted);
+    res.json({ type: "success", rounds: formatted });
   } catch (err) {
     console.error("GET /api/rounds error:", err);
-    res.status(500).json({ error: "Database error", details: err.message || err });
+    res.status(500).json({ type: "error", message: "Database error", details: err.message || err });
   }
 });
 
 // ---------------------------------------------
-// GET single round (with holes if HBH)
+// GET single round
 // ---------------------------------------------
 router.get("/:id", auth, async (req, res) => {
   try {
     const roundId = Number(req.params.id);
-    if (Number.isNaN(roundId)) return res.status(400).json({ error: "Invalid round id" });
+    if (Number.isNaN(roundId)) return res.status(400).json({ type: "error", message: "Invalid round id" });
 
     const userId = req.user.id;
 
@@ -139,7 +136,7 @@ router.get("/:id", auth, async (req, res) => {
       [roundId, userId]
     );
 
-    if (!rows.length) return res.status(404).json({ error: "Round not found" });
+    if (!rows.length) return res.status(404).json({ type: "error", message: "Round not found" });
 
     const round = formatRoundRow(rows[0]);
 
@@ -152,7 +149,7 @@ router.get("/:id", auth, async (req, res) => {
         [roundId]
       );
 
-      round.round_holes = holes.map(h => ({
+      round.round_holes = holes.map((h) => ({
         hole_id: h.hole_id,
         score: h.score === null ? null : Number(h.score),
         fir_hit: h.fir_hit === null ? null : Number(h.fir_hit),
@@ -164,10 +161,10 @@ router.get("/:id", auth, async (req, res) => {
       round.round_holes = [];
     }
 
-    res.json(round);
+    res.json({ type: "success", round });
   } catch (err) {
     console.error("GET /api/rounds/:id error:", err);
-    res.status(500).json({ error: "Database error", details: err.message || err });
+    res.status(500).json({ type: "error", message: "Database error", details: err.message || err });
   }
 });
 
@@ -189,10 +186,12 @@ router.post("/", auth, async (req, res) => {
       notes,
       hole_by_hole,
       advanced_stats,
-      round_holes
+      round_holes,
     } = req.body;
 
-    if (!course_id || !tee_id || !date) return res.status(400).json({ error: "course_id, tee_id, and date are required" });
+    if (!course_id || !tee_id || !date) {
+      return res.status(400).json({ type: "error", message: "course_id, tee_id, and date are required" });
+    }
 
     const created_date = new Date();
 
@@ -229,11 +228,11 @@ router.post("/", auth, async (req, res) => {
     }
 
     await query("COMMIT");
-    res.status(201).json({ message: "Round created", roundId });
+    res.status(201).json({ type: "success", message: "Round created", roundId });
   } catch (err) {
     console.error("POST /api/rounds error:", err);
     try { await query("ROLLBACK"); } catch (e) { console.error("Rollback error:", e); }
-    res.status(500).json({ error: "Database error", details: err.message || err });
+    res.status(500).json({ type: "error", message: "Database error", details: err.message || err });
   }
 });
 
@@ -256,7 +255,7 @@ router.put("/:id", auth, async (req, res) => {
       notes,
       hole_by_hole,
       advanced_stats,
-      round_holes
+      round_holes,
     } = req.body;
 
     const updated_date = new Date();
@@ -278,7 +277,7 @@ router.put("/:id", auth, async (req, res) => {
 
     if (result.affectedRows === 0) {
       await query("ROLLBACK");
-      return res.status(404).json({ error: "Round not found or not authorized" });
+      return res.status(404).json({ type: "error", message: "Round not found or not authorized" });
     }
 
     if (hole_by_hole && Array.isArray(round_holes)) {
@@ -300,11 +299,11 @@ router.put("/:id", auth, async (req, res) => {
     }
 
     await query("COMMIT");
-    res.json({ message: "Round updated" });
+    res.json({ type: "success", message: "Round updated" });
   } catch (err) {
     console.error("PUT /api/rounds/:id error:", err);
     try { await query("ROLLBACK"); } catch (e) { console.error("Rollback error:", e); }
-    res.status(500).json({ error: "Database error", details: err.message || err });
+    res.status(500).json({ type: "error", message: "Database error", details: err.message || err });
   }
 });
 
@@ -322,15 +321,15 @@ router.delete("/:id", auth, async (req, res) => {
 
     if (result.affectedRows === 0) {
       await query("ROLLBACK");
-      return res.status(404).json({ error: "Round not found or not authorized" });
+      return res.status(404).json({ type: "error", message: "Round not found or not authorized" });
     }
 
     await query("COMMIT");
-    res.json({ message: "Round deleted" });
+    res.json({ type: "success", message: "Round deleted" });
   } catch (err) {
     console.error("DELETE /api/rounds/:id error:", err);
     try { await query("ROLLBACK"); } catch (e) { console.error("Rollback error:", e); }
-    res.status(500).json({ error: "Database error", details: err.message || err });
+    res.status(500).json({ type: "error", message: "Database error", details: err.message || err });
   }
 });
 

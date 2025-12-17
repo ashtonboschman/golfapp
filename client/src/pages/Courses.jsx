@@ -1,17 +1,18 @@
 import { useContext, useEffect, useState, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
+import { useMessage } from "../context/MessageContext";
 import CourseCard from "../components/CourseCard";
 
 export default function Courses() {
   const { auth, logout } = useContext(AuthContext);
   const token = auth?.token;
   const navigate = useNavigate();
+  const { showMessage, clearMessage } = useMessage();
 
   const [courses, setCourses] = useState([]);
   const [filteredCourses, setFilteredCourses] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState("");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
@@ -19,15 +20,13 @@ export default function Courses() {
   const observer = useRef();
   const BASE_URL = "http://localhost:3000";
 
-  // Redirect if not logged in
   useEffect(() => {
     if (!token) navigate("/login", { replace: true });
   }, [token, navigate]);
 
-  // Fetch courses
   const fetchCourses = async (pageToFetch) => {
     setLoading(true);
-    setMessage("");
+    clearMessage(); // clear any previous messages
     try {
       const res = await fetch(`${BASE_URL}/api/courses?limit=20&page=${pageToFetch}`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -39,24 +38,29 @@ export default function Courses() {
       }
 
       const data = await res.json();
-      if (!Array.isArray(data)) throw new Error("Invalid data received from server");
+
+      if (data.type === "error") throw new Error(data.message || "Error fetching courses");
+
+      const coursesData = Array.isArray(data.courses) ? data.courses : [];
 
       setCourses((prev) => {
         const map = new Map(prev.map((c) => [c.id, c]));
-        data.forEach((c) => map.set(c.id, c));
+        coursesData.forEach((c) => map.set(c.id, c));
         return Array.from(map.values());
       });
 
-      setHasMore(data.length === 20);
+      setHasMore(coursesData.length === 20);
       setPage(pageToFetch);
+
+      if (data.message) showMessage(data.message, data.type || "success");
     } catch (err) {
-      setMessage(err.message || "Error fetching courses");
+      console.error(err);
+      showMessage(err.message || "Error fetching courses", "error");
     } finally {
       setLoading(false);
     }
   };
 
-  // Initial fetch
   useEffect(() => {
     if (token) {
       setCourses([]);
@@ -67,7 +71,6 @@ export default function Courses() {
     }
   }, [token]);
 
-  // Filter courses by search
   useEffect(() => {
     if (!search.trim()) {
       setFilteredCourses(courses);
@@ -83,7 +86,6 @@ export default function Courses() {
     }
   }, [search, courses]);
 
-  // Infinite scroll
   const lastCourseRef = useCallback(
     (node) => {
       if (loading) return;
@@ -98,12 +100,6 @@ export default function Courses() {
 
   return (
     <div className="page-stack">
-      {message && (
-        <p className={`courses-message ${message.includes("Error") ? "error" : "success"}`}>
-          {message}
-        </p>
-      )}
-
       <input
         type="text"
         placeholder="Search Course"

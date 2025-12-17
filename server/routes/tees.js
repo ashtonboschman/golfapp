@@ -31,13 +31,13 @@ router.get("/", auth, async (req, res) => {
       : "SELECT * FROM tees ORDER BY course_id ASC, id ASC";
 
     const tees = await query(teesSql, course_id ? [course_id] : []);
-    if (!tees.length) return res.json([]);
+    if (!tees.length) return res.json({ type: "success", tees: [] });
 
     const teesWithHoles = await attachHoles(tees);
-    res.json(teesWithHoles);
+    res.json({ type: "success", tees: teesWithHoles });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: "Database error", details: err });
+    res.status(500).json({ type: "error", message: "Database error", details: err });
   }
 });
 
@@ -48,13 +48,13 @@ router.get("/:id", auth, async (req, res) => {
   try {
     const teeId = req.params.id;
     const tees = await query(`SELECT * FROM tees WHERE id = ?`, [teeId]);
-    if (!tees.length) return res.status(404).json({ message: "Tee not found" });
+    if (!tees.length) return res.status(404).json({ type: "error", message: "Tee not found" });
 
     const teesWithHoles = await attachHoles(tees);
-    res.json(teesWithHoles[0]);
+    res.json({ type: "success", tee: teesWithHoles[0] });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: "Database error", details: err });
+    res.status(500).json({ type: "error", message: "Database error", details: err });
   }
 });
 
@@ -68,10 +68,10 @@ router.get("/:id/holes", auth, async (req, res) => {
       `SELECT * FROM holes WHERE tee_id = ? ORDER BY hole_number ASC`,
       [teeId]
     );
-    res.json(holes);
+    res.json({ type: "success", holes });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: "Database error", details: err });
+    res.status(500).json({ type: "error", message: "Database error", details: err });
   }
 });
 
@@ -83,7 +83,7 @@ router.post("/", auth, async (req, res) => {
     const body = req.body;
     const required = ["course_id", "gender", "tee_name"];
     for (const field of required)
-      if (!body[field]) return res.status(400).json({ message: `${field} is required` });
+      if (!body[field]) return res.status(400).json({ type: "error", message: `${field} is required` });
 
     const sql = `
       INSERT INTO tees (
@@ -116,10 +116,12 @@ router.post("/", auth, async (req, res) => {
 
     const result = await query(sql, values);
     const newTee = await query(`SELECT * FROM tees WHERE id = ?`, [result.insertId]);
-    res.json(await attachHoles(newTee)[0]);
+    const teeWithHoles = await attachHoles(newTee);
+
+    res.json({ type: "success", message: "Tee created", tee: teeWithHoles[0] });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: "Database error", details: err });
+    res.status(500).json({ type: "error", message: "Database error", details: err });
   }
 });
 
@@ -146,16 +148,18 @@ router.put("/:id", auth, async (req, res) => {
       }
     }
 
-    if (!updates.length) return res.status(400).json({ message: "No valid fields provided" });
+    if (!updates.length) return res.status(400).json({ type: "error", message: "No valid fields provided" });
 
     values.push(id);
     await query(`UPDATE tees SET ${updates.join(", ")}, updated_date = NOW() WHERE id = ?`, values);
 
     const updatedTee = await query(`SELECT * FROM tees WHERE id = ?`, [id]);
-    res.json(await attachHoles(updatedTee)[0]);
+    const teeWithHoles = await attachHoles(updatedTee);
+
+    res.json({ type: "success", message: "Tee updated", tee: teeWithHoles[0] });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: "Database error", details: err });
+    res.status(500).json({ type: "error", message: "Database error", details: err });
   }
 });
 
@@ -167,12 +171,12 @@ router.delete("/:id", auth, async (req, res) => {
     const teeId = req.params.id;
     await query(`DELETE FROM holes WHERE tee_id = ?`, [teeId]);
     const result = await query(`DELETE FROM tees WHERE id = ?`, [teeId]);
-    if (result.affectedRows === 0) return res.status(404).json({ message: "Tee not found" });
+    if (result.affectedRows === 0) return res.status(404).json({ type: "error", message: "Tee not found" });
 
-    res.json({ message: "Tee deleted", id: teeId });
+    res.json({ type: "success", message: "Tee deleted", id: teeId });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: "Database error", details: err });
+    res.status(500).json({ type: "error", message: "Database error", details: err });
   }
 });
 

@@ -1,6 +1,7 @@
 import { useContext, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
+import { useMessage } from "../context/MessageContext";
 import RoundCard from "../components/RoundCard";
 import {
   LineChart,
@@ -17,6 +18,7 @@ export default function Dashboard() {
   const { auth, logout } = useContext(AuthContext);
   const token = auth?.token;
   const navigate = useNavigate();
+  const { showMessage, clearMessage } = useMessage();
 
   const [loading, setLoading] = useState(true);
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -45,20 +47,28 @@ export default function Dashboard() {
 
     const fetchStats = async () => {
       setLoading(true);
+      clearMessage(); // clear old messages
       try {
         const res = await fetch(`${BASE_URL}/api/dashboard?statsMode=${statsMode}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
 
-        if (res.status === 401 || res.status === 403) {
+        if ([401, 403].includes(res.status)) {
           logout();
           return navigate("/login", { replace: true });
         }
 
         const data = await res.json();
-        setStats(data);
+
+        if (data.type === "error") {
+          console.error("Dashboard API error:", data.message);
+          showMessage(data.message || "Error fetching dashboard stats", "error");
+        } else {
+          setStats(data);
+        }
       } catch (err) {
         console.error("Dashboard fetch error:", err);
+        showMessage("Failed to load dashboard. Check console.", "error");
       } finally {
         setLoading(false);
       }
@@ -81,6 +91,7 @@ export default function Dashboard() {
         setTees(data);
       } catch (err) {
         console.error("Fetch tees error:", err);
+        showMessage("Failed to load tees.", "error");
       }
     };
 
@@ -90,8 +101,8 @@ export default function Dashboard() {
   if (loading) return <p className="loading-text">Loading dashboard...</p>;
 
   // --- FORMATTERS ---
-  const formatNumber = (num) => (num == null ? "-" : num % 1 === 0 ? num : num.toFixed(1));
-  const formatPercent = (num) => (num == null ? "-" : `${num.toFixed(1)}%`);
+  const formatNumber = (num) => (num == null || isNaN(num) ? "-" : num % 1 === 0 ? num : num.toFixed(1));
+  const formatPercent = (num) => (num == null || isNaN(num) ? "-" : `${num.toFixed(1)}%`);
   const formatDate = (dateStr) =>
     !dateStr
       ? "-"
@@ -101,12 +112,11 @@ export default function Dashboard() {
           year: "numeric",
         });
   const formatHandicap = (num) => {
-    if (num == null) return "-";
+    if (num == null || isNaN(num)) return "-";
     if (num < 0) return `+${Math.abs(num)}`;
     return num % 1 === 0 ? num : num.toFixed(1);
   };
 
-  // --- NORMALIZE ROUNDS FOR DISPLAY ONLY ---
   const displayRounds = (stats.all_rounds ?? []).map((r) => ({
     ...r,
     course_name: r.course?.course_name ?? "-",
@@ -124,24 +134,23 @@ export default function Dashboard() {
   const par4_avg = stats.hbh_stats?.par4_avg ?? null;
   const par5_avg = stats.hbh_stats?.par5_avg ?? null;
 
-  const birdiesOrBetterPerRound = stats.hbh_stats?.scoring_breakdown
-    ? ((stats.hbh_stats.scoring_breakdown.ace ?? 0) +
-        (stats.hbh_stats.scoring_breakdown.albatross ?? 0) +
-        (stats.hbh_stats.scoring_breakdown.eagle ?? 0) +
-        (stats.hbh_stats.scoring_breakdown.birdie ?? 0)) /
-      stats.hbh_stats.hbh_rounds_count
+  const hbhCount = stats.hbh_stats?.hbh_rounds_count ?? 0;
+  const sb = stats.hbh_stats?.scoring_breakdown;
+
+  const birdiesOrBetterPerRound = sb && hbhCount
+    ? ((sb.ace ?? 0) + (sb.albatross ?? 0) + (sb.eagle ?? 0) + (sb.birdie ?? 0)) / hbhCount
     : null;
 
-  const parPerRound = stats.hbh_stats?.scoring_breakdown
-    ? (stats.hbh_stats.scoring_breakdown.par ?? 0) / stats.hbh_stats.hbh_rounds_count
+  const parPerRound = sb && hbhCount
+    ? (sb.par ?? 0) / hbhCount
     : null;
 
-  const bogeysPerRound = stats.hbh_stats?.scoring_breakdown
-    ? (stats.hbh_stats.scoring_breakdown.bogey ?? 0) / stats.hbh_stats.hbh_rounds_count
+  const bogeysPerRound = sb && hbhCount
+    ? (sb.bogey ?? 0) / hbhCount
     : null;
 
-  const doublesOrWorsePerRound = stats.hbh_stats?.scoring_breakdown
-    ? (stats.hbh_stats.scoring_breakdown.double_plus ?? 0) / stats.hbh_stats.hbh_rounds_count
+  const doublesOrWorsePerRound = sb && hbhCount
+    ? (sb.double_plus ?? 0) / hbhCount
     : null;
 
   const trendData = [...lastRounds]
@@ -152,7 +161,6 @@ export default function Dashboard() {
       fir_pct: r.fir_hit != null && r.fir_total != null ? (r.fir_hit / r.fir_total) * 100 : null,
       gir_pct: r.gir_hit != null && r.gir_total != null ? (r.gir_hit / r.gir_total) * 100 : null,
     }));
-
 
   const scores = trendData.map((d) => d.score).filter((v) => v != null);
   const yMin = scores.length ? Math.floor(Math.min(...scores) / 10) * 10 : 0;
@@ -167,6 +175,7 @@ export default function Dashboard() {
         + Add Round
       </button>
 
+      {/* ...rest of your original code remains unchanged... */}
       <div className="stats-tabs">
         {["9", "18", "combined"].map((m) => (
           <button
@@ -206,7 +215,7 @@ export default function Dashboard() {
 
       <div className="section">
         <div className="card last-five-rounds-card">
-           <h3>Last 5 Rounds</h3>
+          <h3>Last 5 Rounds</h3>
         </div>
         {lastRounds.length === 0 ? (
           <p>No rounds recorded.</p>

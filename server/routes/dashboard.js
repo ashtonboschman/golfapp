@@ -109,10 +109,15 @@ router.get("/", auth, async (req, res) => {
   `;
 
   db.query(roundsQuery, [userId], (err, rounds) => {
-    if (err) return res.status(500).json({ message: "Database error", details: err });
+    if (err) {
+      console.error(err);
+      return res.status(500).json({ type: "error", message: "Database error fetching rounds.", details: err.message });
+    }
 
     if (!rounds || rounds.length === 0) {
       return res.json({
+        type: "success",
+        message: "No rounds found.",
         total_rounds: 0,
         best_score: null,
         worst_score: null,
@@ -122,7 +127,6 @@ router.get("/", auth, async (req, res) => {
         fir_avg: null,
         gir_avg: null,
         handicap: null,
-        handicap_message: "No rounds available.",
         all_rounds: [],
         hbh_stats: null,
       });
@@ -138,7 +142,10 @@ router.get("/", auth, async (req, res) => {
     `;
 
     db.query(holesQuery, [teeIds], (err2, holes) => {
-      if (err2) return res.status(500).json({ message: "Database error", details: err2 });
+      if (err2) {
+        console.error(err2);
+        return res.status(500).json({ type: "error", message: "Database error fetching holes.", details: err2.message });
+      }
 
       const holesByTee = {};
       holes.forEach((h) => {
@@ -146,7 +153,6 @@ router.get("/", auth, async (req, res) => {
         holesByTee[h.tee_id].push(h);
       });
 
-      // Build rounds
       const allRounds = rounds.map((r) => {
         const teeHoles = holesByTee[r.tee_id] ?? [];
         return {
@@ -176,12 +182,43 @@ router.get("/", auth, async (req, res) => {
         };
       });
 
-      // Apply statsMode normalization
       const modeRounds = normalizeRoundsByMode(allRounds, statsMode);
       const combinedRoundsForHandicap = normalizeRoundsByMode(allRounds, "combined");
-
       const handicap = calculateHandicap(combinedRoundsForHandicap);
       const roundIds = modeRounds.map((r) => r.id);
+
+      if (roundIds.length === 0) {
+        // No rounds in this mode; return empty HBH stats
+        return res.json({
+          type: "success",
+          message: "",
+          total_rounds: 0,
+          best_score: null,
+          worst_score: null,
+          average_score: null,
+          handicap,
+          all_rounds: [],
+          fir_avg: null,
+          gir_avg: null,
+          avg_putts: null,
+          avg_penalties: null,
+          hbh_stats: {
+            par3_avg: null,
+            par4_avg: null,
+            par5_avg: null,
+            scoring_breakdown: {
+              ace: 0,
+              albatross: 0,
+              eagle: 0,
+              birdie: 0,
+              par: 0,
+              bogey: 0,
+              double_plus: 0,
+            },
+            hbh_rounds_count: 0,
+          },
+        });
+      }
 
       const roundHolesQuery = `
         SELECT rh.*, h.par AS hole_par
@@ -191,17 +228,19 @@ router.get("/", auth, async (req, res) => {
       `;
 
       db.query(roundHolesQuery, [roundIds], (err3, rhRows) => {
-        if (err3) return res.status(500).json({ message: "Database error", details: err3 });
+        if (err3) {
+          console.error(err3);
+          return res.status(500).json({ type: "error", message: "Database error fetching round holes.", details: err3.message });
+        }
 
-        // HBH stats
+        // HBH stats calculation (unchanged)
         const parBuckets = { 3: { sum: 0, count: 0 }, 4: { sum: 0, count: 0 }, 5: { sum: 0, count: 0 } };
         const scoring = { ace: 0, albatross: 0, eagle: 0, birdie: 0, par: 0, bogey: 0, double_plus: 0 };
         let hbhRoundCount = 0;
 
         modeRounds.forEach((r) => {
           if (r.hole_by_hole !== 1) return;
-
-          const weight = statsMode === "combined" && r.holes === 18 && r.score % 2 === 0 ? 1 : 1;
+          const weight = 1;
           const rows = rhRows.filter((rh) => rh.round_id === r.id);
           if (!rows.length) return;
 
@@ -236,15 +275,11 @@ router.get("/", auth, async (req, res) => {
           hbh_rounds_count: hbhRoundCount,
         };
 
-        // Compute aggregates
         const totalRounds = modeRounds.length;
-        const totalHandicapRounds = combinedRoundsForHandicap.length;
         const bestScore = totalRounds ? Math.min(...modeRounds.map((r) => r.score)) : null;
         const worstScore = totalRounds ? Math.max(...modeRounds.map((r) => r.score)) : null;
-        const averageScore =
-          totalRounds ? modeRounds.reduce((s, r) => s + r.score, 0) / totalRounds : null;
+        const averageScore = totalRounds ? modeRounds.reduce((s, r) => s + r.score, 0) / totalRounds : null;
 
-        // Advanced stats
         const firRounds = modeRounds.filter((r) => r.fir_hit != null && r.fir_total != null);
         const girRounds = modeRounds.filter((r) => r.gir_hit != null && r.gir_total != null);
         const puttsRounds = modeRounds.filter((r) => r.putts != null);
@@ -270,15 +305,13 @@ router.get("/", auth, async (req, res) => {
             : null;
 
         res.json({
+          type: "success",
+          message: "",
           total_rounds: totalRounds,
           best_score: bestScore,
           worst_score: worstScore,
           average_score: averageScore,
           handicap,
-          handicap_message:
-            totalHandicapRounds < 3
-              ? "Handicap is not calculated until at least 3 rounds are played."
-              : null,
           all_rounds: modeRounds,
           fir_avg,
           gir_avg,

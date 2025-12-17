@@ -1,7 +1,7 @@
-// client/src/pages/CourseDetails.jsx
 import { useContext, useEffect, useState, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
+import { useMessage } from "../context/MessageContext";
 import Select from "react-select";
 
 export default function CourseDetails() {
@@ -9,27 +9,25 @@ export default function CourseDetails() {
   const token = auth?.token;
   const navigate = useNavigate();
   const { id } = useParams();
+  const { showMessage, clearMessage } = useMessage();
 
   const [course, setCourse] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [message, setMessage] = useState("");
   const [selectedTeeId, setSelectedTeeId] = useState("");
   const [teesGrouped, setTeesGrouped] = useState({});
 
   const BASE_URL = "http://localhost:3000";
 
-  // Redirect if not logged in
   useEffect(() => {
     if (!token) navigate("/login", { replace: true });
   }, [token, navigate]);
 
-  // Fetch course
   useEffect(() => {
     if (!token) return;
 
     const fetchCourse = async () => {
       setLoading(true);
-      setMessage("");
+      clearMessage(); // clear any previous messages
       try {
         const res = await fetch(`${BASE_URL}/api/courses/${id}`, {
           headers: { Authorization: `Bearer ${token}` },
@@ -41,15 +39,23 @@ export default function CourseDetails() {
         }
 
         if (res.status === 404) {
-          setMessage("Course not found");
           setCourse(null);
+          showMessage("Course not found", "error");
           return;
         }
 
         const data = await res.json();
-        setCourse(data);
 
-        const tees = [...(data.tees.male || []), ...(data.tees.female || [])];
+        if (data.type === "error") {
+          setCourse(null);
+          showMessage(data.message || "Error fetching course", "error");
+          return;
+        }
+
+        const courseObj = data.course;
+        setCourse(courseObj);
+
+        const tees = [...(courseObj.tees.male || []), ...(courseObj.tees.female || [])];
 
         const grouped = tees.reduce((acc, tee) => {
           const g = tee.gender.charAt(0).toUpperCase() + tee.gender.slice(1);
@@ -58,38 +64,28 @@ export default function CourseDetails() {
         }, {});
         setTeesGrouped(grouped);
 
-        // Default to longest male tee
-        if (data.tees.male?.length > 0) {
-          const longest = data.tees.male.reduce((a, b) =>
-            b.total_yards > a.total_yards ? b : a
-          );
+        if (courseObj.tees.male?.length > 0) {
+          const longest = courseObj.tees.male.reduce((a, b) => (b.total_yards > a.total_yards ? b : a));
           setSelectedTeeId(String(longest.id));
         } else if (tees.length > 0) {
           setSelectedTeeId(String(tees[0].id));
+        } else {
+          setSelectedTeeId("");
         }
       } catch (err) {
-        setMessage(err.message || "Error fetching course");
+        setCourse(null);
+        showMessage(err.message || "Error fetching course", "error");
       } finally {
         setLoading(false);
       }
     };
 
     fetchCourse();
-  }, [id, token, logout, navigate]);
+  }, [id, token, logout, navigate, showMessage]);
 
-  // Prepare all tees
-  const allTees = useMemo(
-    () => [...(course?.tees.male || []), ...(course?.tees.female || [])],
-    [course]
-  );
+  const allTees = useMemo(() => [...(course?.tees.male || []), ...(course?.tees.female || [])], [course]);
+  const selectedTee = useMemo(() => allTees.find((t) => String(t.id) === String(selectedTeeId)), [allTees, selectedTeeId]);
 
-  // Selected tee object
-  const selectedTee = useMemo(
-    () => allTees.find((t) => String(t.id) === String(selectedTeeId)),
-    [allTees, selectedTeeId]
-  );
-
-  // Options for react-select
   const selectOptions = useMemo(() => {
     if (!teesGrouped || Object.keys(teesGrouped).length === 0) return [];
     return Object.entries(teesGrouped).map(([gender, tees]) => ({
@@ -101,7 +97,6 @@ export default function CourseDetails() {
     }));
   }, [teesGrouped]);
 
-  // Compute scorecard totals
   const computeTotals = (list) =>
     list.reduce(
       (acc, h) => {
@@ -113,16 +108,6 @@ export default function CourseDetails() {
     );
 
   if (loading) return <p>Loading course details...</p>;
-  if (message)
-    return (
-      <p
-        className={`courses-message ${
-          message.includes("Error") ? "error" : "success"
-        }`}
-      >
-        {message}
-      </p>
-    );
   if (!course) return null;
 
   const holes = selectedTee?.holes || [];
@@ -134,7 +119,6 @@ export default function CourseDetails() {
 
   return (
     <div className="page-stack">
-      {/* Add Round Button */}
       <button
         className="btn btn-save"
         onClick={() =>
@@ -148,23 +132,21 @@ export default function CourseDetails() {
             },
           })
         }
+        disabled={!allTees.length}
       >
         + Add Round
       </button>
 
-      {/* Course Info */}
       <div className="card course-card">
         <h2 className="course-name">{course.course_name}</h2>
         <p className="course-club">
           <strong>Club:</strong> {course.club_name}
         </p>
         <p className="course-location">
-          <strong>Location:</strong> {course.location.city}, {course.location.state},{" "}
-          {course.location.country}
+          <strong>Location:</strong> {course.location.city}, {course.location.state}, {course.location.country}
         </p>
       </div>
 
-      {/* Tee Selector */}
       <div className="card tee-select-card">
         <label htmlFor="tee-select">
           <strong>Select Tee:</strong>
@@ -180,24 +162,17 @@ export default function CourseDetails() {
                   }
                 : null
             }
-            options={Object.entries(teesGrouped).map(([gender, tees]) => ({
-              label: gender,
-              options: tees.map((t) => ({
-                value: String(t.id),
-                label: `${t.tee_name} ${t.total_yards} yds (${t.course_rating}/${t.slope_rating}) ${t.number_of_holes} holes`,
-              })),
-            }))}
+            options={selectOptions}
             onChange={(option) => setSelectedTeeId(option?.value ?? "")}
             isClearable
             menuPortalTarget={document.body}
             styles={{ menuPortal: (base) => ({ ...base, zIndex: 9999 }) }}
           />
         ) : (
-          <p>Loading tees...</p>
+          <p>No tees available for this course.</p>
         )}
       </div>
 
-      {/* Rating & Slope */}
       {selectedTee && (
         <div className="card course-scorecard-meta">
           <span>
@@ -209,10 +184,8 @@ export default function CourseDetails() {
         </div>
       )}
 
-      {/* Scorecard */}
-      {selectedTee && (
+      {selectedTee && holes.length > 0 && (
         <div className="course-scorecard-wrapper card">
-          {/* Left table: fixed width */}
           <table className="course-scorecard-left">
             <thead>
               <tr>
@@ -232,7 +205,6 @@ export default function CourseDetails() {
             </thead>
           </table>
 
-          {/* Right table: scrollable */}
           <div className="course-scorecard-scroll">
             <table className="course-scorecard-right">
               <thead>

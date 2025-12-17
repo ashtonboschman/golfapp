@@ -1,6 +1,7 @@
 import { memo, useEffect, useState, useContext, useMemo } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
+import { useMessage } from "../context/MessageContext";
 import { AsyncPaginate } from 'react-select-async-paginate';
 import HoleCard from "../components/HoleCard";
 
@@ -11,6 +12,7 @@ export default function RoundForm({ mode }) {
   const origin = location.state?.from || "/rounds";
   const { auth } = useContext(AuthContext);
   const token = auth?.token;
+  const { showMessage, clearMessage } = useMessage();
 
   const [round, setRound] = useState({
     date: new Date().toISOString().split("T")[0],
@@ -32,12 +34,10 @@ export default function RoundForm({ mode }) {
   const [holes, setHoles] = useState([]);
   const [holeScores, setHoleScores] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState("");
   const [initialized, setInitialized] = useState(false);
+  const [selectedCourse, setSelectedCourse] = useState(null);
+  const [selectedTee, setSelectedTee] = useState(null);
 
-  // ────────────────────────────
-  // Helpers
-  // ────────────────────────────
   const isHBH = round.hole_by_hole === 1;
   const hasAdvanced = round.advanced_stats === 1;
 
@@ -47,12 +47,7 @@ export default function RoundForm({ mode }) {
     holes.reduce((sum, h) => sum + (h.score ?? 0), 0);
 
   const buildPayload = () => {
-    const payload = {
-      ...round,
-      course_id: Number(round.course_id),
-      tee_id: Number(round.tee_id),
-    };
-
+    const payload = { ...round, course_id: Number(round.course_id), tee_id: Number(round.tee_id) };
     if (isHBH) {
       payload.round_holes = holeScores.map((h) => ({
         hole_id: h.hole_id,
@@ -62,13 +57,11 @@ export default function RoundForm({ mode }) {
         putts: hasAdvanced ? h.putts : null,
         penalties: hasAdvanced ? h.penalties : null,
       }));
-
       payload.score = getTotalScore(holeScores);
 
       if (hasAdvanced) {
         ["fir_hit", "gir_hit", "putts", "penalties"].forEach(
-          (f) =>
-            (payload[f] = holeScores.reduce((s, h) => s + (h[f] ?? 0), 0))
+          (f) => (payload[f] = holeScores.reduce((s, h) => s + (h[f] ?? 0), 0))
         );
       }
     } else if (hasAdvanced) {
@@ -76,10 +69,8 @@ export default function RoundForm({ mode }) {
         (f) => (payload[f] = round[f])
       );
     }
-
     return payload;
   };
-
 
   // ────────────────────────────
   // Fetchers
@@ -93,9 +84,11 @@ export default function RoundForm({ mode }) {
           headers: { Authorization: `Bearer ${token}` },
         });
         const data = await res.json();
-        setCourses(data);
+        const coursesArray = data.courses || [];
+        setCourses(coursesArray);
       } catch (err) {
         console.error(err);
+        showMessage("Error fetching courses.", "error");
       }
     };
 
@@ -106,7 +99,7 @@ export default function RoundForm({ mode }) {
     if (!token) navigate("/login", { replace: true });
   }, [token, navigate]);
 
-  const loadCourseOptions = async (search, loadedOptions, { page }) => {
+  const loadCourseOptions = async (search, loadedOptions, { page } = { page: 1 }) => {
     if (!token) return { options: [], hasMore: false, additional: { page: 1 } };
 
     try {
@@ -115,10 +108,11 @@ export default function RoundForm({ mode }) {
         { headers: { Authorization: `Bearer ${token}` } }
       );
       const data = await res.json();
+      const coursesArray = data.courses || []; // extract array from API response
 
       return {
-        options: data.map((course) => ({ label: course.course_name, value: course.id })),
-        hasMore: data.length === 20, // fetch more if page is full
+        options: coursesArray.map((course) => ({ label: course.course_name, value: course.id })),
+        hasMore: coursesArray.length === 20,
         additional: { page: page + 1 },
       };
     } catch (err) {
@@ -127,7 +121,7 @@ export default function RoundForm({ mode }) {
     }
   };
 
-  const loadTeeOptions = async (search, loadedOptions, { page }, courseId) => {
+  const loadTeeOptions = async (search, loadedOptions, { page } = { page: 1 }, courseId) => {
     if (!courseId) return { options: [], hasMore: false, additional: { page: 1 } };
 
     try {
@@ -136,9 +130,10 @@ export default function RoundForm({ mode }) {
         { headers: { Authorization: `Bearer ${token}` } }
       );
       const data = await res.json();
+      const teesArray = data.tees || [];
 
       const grouped = Object.entries(
-        data.reduce((acc, tee) => {
+        teesArray.reduce((acc, tee) => {
           const genderKey = tee.gender.charAt(0).toUpperCase() + tee.gender.slice(1).toLowerCase();
           if (!acc[genderKey]) acc[genderKey] = [];
           acc[genderKey].push({
@@ -157,21 +152,21 @@ export default function RoundForm({ mode }) {
   };
 
   const fetchTees = async (courseId) => {
+    if (!courseId) return [];
     try {
-      const res = await fetch(
-        `http://localhost:3000/api/tees?course_id=${courseId}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const res = await fetch(`http://localhost:3000/api/tees?course_id=${courseId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       const data = await res.json();
-      setTees(data);
-      return data; // return for use in edit mode
+      const teesArray = data.tees || []; // <- make sure this is an array
+      setTees(teesArray);
+      return teesArray;
     } catch (err) {
       console.error(err);
-      setMessage("Error fetching tees.");
+      showMessage("Error fetching tees.", "error");
       return [];
     }
   };
-
 
   const fetchHoles = async (teeId, existingRoundHoles = [], isHoleByHole = 0) => {
     if (!teeId) return [];
@@ -180,9 +175,11 @@ export default function RoundForm({ mode }) {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
-      setHoles(data || []);
 
-      const initScores = (data || []).map((hole) => {
+      const holesArray = data.holes || [];
+      setHoles(holesArray);
+
+      const initScores = holesArray.map((hole) => {
         const existing = existingRoundHoles.find((h) => h.hole_id === hole.id);
         return {
           hole_id: hole.id,
@@ -196,17 +193,13 @@ export default function RoundForm({ mode }) {
         };
       });
       setHoleScores(initScores);
-
-      return data || [];
+      return holesArray;
     } catch (err) {
       console.error(err);
-      setMessage("Error fetching holes.");
+      showMessage("Error fetching holes.", "error");
       return [];
     }
   };
-
-  const [selectedCourse, setSelectedCourse] = useState(null);
-  const [selectedTee, setSelectedTee] = useState(null);
 
   useEffect(() => {
     if (round.course_id && !selectedCourse) {
@@ -284,7 +277,8 @@ export default function RoundForm({ mode }) {
         const res = await fetch(`http://localhost:3000/api/rounds/${id}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
-        const data = await res.json();
+        const result = await res.json();
+        const data = result.round;      
 
         const roundData = {
           date: data.date?.split("T")[0] ?? new Date().toISOString().split("T")[0],
@@ -333,7 +327,7 @@ export default function RoundForm({ mode }) {
         setInitialized(true);
       } catch (err) {
         console.error(err);
-        setMessage("Error fetching round.");
+        showMessage("Error fetching round.", "error");
       } finally {
         setLoading(false);
       }
@@ -437,34 +431,34 @@ export default function RoundForm({ mode }) {
     });
   };
 
+  // ────────────────────────────
+  // Submit Handler
+  // ────────────────────────────
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setMessage("");
+    clearMessage();
 
     if (!round.date || !round.course_id || !round.tee_id) {
-      setMessage("❌ Date, Course, and Tee are required.");
+      showMessage("❌ Date, Course, and Tee are required.", "error");
       return;
     }
 
     if (!isHBH && (round.score === null || round.score === "")) {
-      setMessage("❌ Score is required in Quick Score mode.");
+      showMessage("❌ Score is required in Quick Score mode.", "error");
       return;
     }
 
     if (isHBH) {
       const incomplete = holeScores.find((h) => h.score === null);
       if (incomplete) {
-        setMessage(`❌ Please enter a score for hole ${incomplete.hole_number}.`);
+        showMessage(`❌ Please enter a score for hole ${incomplete.hole_number}.`, "error");
         return;
       }
     }
 
     setLoading(true);
     try {
-      const url =
-        mode === "add"
-          ? "http://localhost:3000/api/rounds"
-          : `http://localhost:3000/api/rounds/${id}`;
+      const url = mode === "add" ? "http://localhost:3000/api/rounds" : `http://localhost:3000/api/rounds/${id}`;
       const method = mode === "add" ? "POST" : "PUT";
 
       const res = await fetch(url, {
@@ -479,11 +473,11 @@ export default function RoundForm({ mode }) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Error saving round");
 
-      setMessage(data.message || "✅ Round saved successfully!");
+      showMessage(data.message || "✅ Round saved successfully!", "success");
       setTimeout(() => navigate(origin), 1000);
     } catch (err) {
       console.error(err);
-      setMessage(err.message || "Error saving round");
+      showMessage(err.message || "Error saving round", "error");
     } finally {
       setLoading(false);
     }
@@ -567,6 +561,7 @@ export default function RoundForm({ mode }) {
   };
 
   const groupedTeeOptions = useMemo(() => {
+    if (!Array.isArray(tees)) return [];
     return Object.entries(
       tees.reduce((acc, tee) => {
         const genderKey = tee.gender.charAt(0).toUpperCase() + tee.gender.slice(1).toLowerCase();
@@ -585,12 +580,6 @@ export default function RoundForm({ mode }) {
   // ────────────────────────────
   return (
     <div className="page-stack">
-      {message && (
-        <p className={`message ${message.startsWith("❌") ? "error" : "success"}`}>
-          {message}
-        </p>
-      )}
-
       <form onSubmit={handleSubmit} className="form">
         <div className="form-row">
           <label className="form-label">Date</label>

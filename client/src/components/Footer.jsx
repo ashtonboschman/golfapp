@@ -12,6 +12,7 @@ export default function Footer() {
 
   const buttons = [
     { path: "/leaderboard", emoji: "🏆", label: "Leaderboard" },
+    { path: "/friends", emoji: "👥", label: "Friends" },
     { path: "/courses", emoji: "⛳", label: "Courses" },
     { path: "/", emoji: "📊", label: "Dashboard" },
     { path: "/rounds", emoji: "🏌️‍♂️", label: "Rounds" },

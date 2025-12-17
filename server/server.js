@@ -16,6 +16,7 @@ app.use('/api/courses', require('./routes/courses'));
 app.use('/api/tees', require('./routes/tees'));
 app.use('/api/rounds', require('./routes/rounds'));
 app.use('/api/dashboard', require('./routes/dashboard'));
+app.use("/api/friends", require("./routes/friends"));
 
 app.get('/', (req, res) => {
   res.send("Welcome to the golf API server!");

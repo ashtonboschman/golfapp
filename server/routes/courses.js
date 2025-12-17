@@ -45,8 +45,7 @@ const buildCourseResponse = async (courseId) => {
 };
 
 // ============================================================================
-// GET ALL COURSES (Paginated, returns plain array)
-// Example: /courses?limit=20&page=1
+// GET ALL COURSES
 // ============================================================================
 router.get("/", auth, async (req, res) => {
   try {
@@ -68,7 +67,8 @@ router.get("/", auth, async (req, res) => {
 
     const courses = await query(sql, params);
 
-    if (!courses.length) return res.json([]);
+    if (!courses.length) 
+      return res.json({ type: "success", message: "No courses found", courses: [] });
 
     const courseResponses = [];
     for (const c of courses) {
@@ -76,10 +76,10 @@ router.get("/", auth, async (req, res) => {
       if (fullCourse) courseResponses.push(fullCourse);
     }
 
-    res.json(courseResponses);
+    res.json({ type: "success", message: "", courses: courseResponses });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Database error", details: err });
+    res.status(500).json({ type: "error", message: "Failed to retrieve courses. Please try again.", details: err.message });
   }
 });
 
@@ -90,12 +90,13 @@ router.get("/:id", auth, async (req, res) => {
   try {
     const courseId = req.params.id;
     const course = await buildCourseResponse(courseId);
-    if (!course) return res.status(404).json({ error: "Course not found" });
+    if (!course) 
+      return res.status(404).json({ type: "error", message: `Course with ID ${courseId} not found.` });
 
-    res.json(course);
+    res.json({ type: "success", message: "", course });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Database error", details: err });
+    res.status(500).json({ type: "error", message: "Failed to retrieve course. Please try again.", details: err.message });
   }
 });
 
@@ -106,7 +107,7 @@ router.post("/", auth, async (req, res) => {
   try {
     const { id: courseIdFromApi, club_name, course_name, location, tees } = req.body;
     if (!courseIdFromApi || !club_name || !course_name)
-      return res.status(400).json({ error: "id, club_name, and course_name are required" });
+      return res.status(400).json({ type: "error", message: "Course ID, club name, and course name are required." });
 
     await query(
       `INSERT INTO courses (id, club_name, course_name) VALUES (?, ?, ?)`,
@@ -165,10 +166,10 @@ router.post("/", auth, async (req, res) => {
     }
 
     const newCourse = await buildCourseResponse(courseIdFromApi);
-    res.json(newCourse);
+    res.json({ type: "success", message: "Course created successfully.", course: newCourse });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Database error", details: err });
+    res.status(500).json({ type: "error", message: "Failed to create course. Please try again.", details: err.message });
   }
 });
 
@@ -189,17 +190,19 @@ router.put("/:id", auth, async (req, res) => {
       }
     }
 
-    if (!updates.length) return res.status(400).json({ error: "No valid fields provided for update" });
+    if (!updates.length) 
+      return res.status(400).json({ type: "error", message: "No valid fields provided for update." });
 
     values.push(courseId);
     const result = await query(`UPDATE courses SET ${updates.join(", ")} WHERE id = ?`, values);
-    if (result.affectedRows === 0) return res.status(404).json({ error: "Course not found" });
+    if (result.affectedRows === 0) 
+      return res.status(404).json({ type: "error", message: `Course with ID ${courseId} not found.` });
 
     const updatedCourse = await buildCourseResponse(courseId);
-    res.json(updatedCourse);
+    res.json({ type: "success", message: "Course updated successfully.", course: updatedCourse });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Database error", details: err });
+    res.status(500).json({ type: "error", message: "Failed to update course. Please try again.", details: err.message });
   }
 });
 
@@ -218,11 +221,13 @@ router.delete("/:id", auth, async (req, res) => {
     await query(`DELETE FROM locations WHERE course_id = ?`, [courseId]);
     const result = await query(`DELETE FROM courses WHERE id = ?`, [courseId]);
 
-    if (result.affectedRows === 0) return res.status(404).json({ error: "Course not found" });
-    res.json({ message: "Course deleted" });
+    if (result.affectedRows === 0) 
+      return res.status(404).json({ type: "error", message: `Course with ID ${courseId} not found.` });
+
+    res.json({ type: "success", message: "Course deleted successfully." });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Database error", details: err });
+    res.status(500).json({ type: "error", message: "Failed to delete course. Please try again.", details: err.message });
   }
 });
 
