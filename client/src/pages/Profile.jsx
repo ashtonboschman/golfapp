@@ -2,11 +2,11 @@ import { useContext, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
 import { useMessage } from "../context/MessageContext";
-import Messages from "../components/Messages";
 
 export default function Profile() {
   const { auth, login, logout } = useContext(AuthContext);
   const { showMessage, clearMessage } = useMessage();
+  
   const token = auth?.token;
   const navigate = useNavigate();
 
