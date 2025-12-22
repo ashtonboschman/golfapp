@@ -51,7 +51,7 @@ export default function Rounds() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Error fetching tees");
-      setTees(data);
+      setTees(data.tees || []);
     } catch (err) {
       console.error("Fetch tees error:", err);
       showMessage(err.message || "Error fetching tees", "error");

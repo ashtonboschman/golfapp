@@ -1,72 +1,95 @@
-// client/src/components/FriendCard.jsx
-import React from "react";
+import React, { useState } from "react";
 
-export default function FriendCard({ friend, type, onAction, showRemove = true }) {
-  const handleClick = (action) => {
-    if (onAction) onAction(friend.id, action);
+export default function FriendCard({ friend, onAction, showDetails = true }) {
+  const type = friend.type || "none";
+  const [loading, setLoading] = useState(false);
+
+  const handleClick = async (action) => {
+    if (!onAction || loading) return;
+
+    setLoading(true);
+    try {
+      // Call context handler
+      await onAction(friend.id, action);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div className="friend-card flex align-center justify-between mb-2 p-3">
-      {/* Friend info */}
+    <div className="friend-card">
       <div className="friend-info">
-        <span className="friend-username font-bold text-lg">{friend.username}</span>
+        <img
+          className="friend-img"
+          src={friend.avatar_url || "/avatars/default.png"}
+          alt={`${friend.first_name || ""} ${friend.last_name || ""}`}
+        />
+        <div className="friend-name">
+          {friend.first_name} {friend.last_name}
+        </div>
       </div>
 
-      {/* Actions */}
-      <div className="friend-actions flex gap-2">
+      <div className="friend-actions">
         {type === "none" && (
           <button
             className="btn btn-save"
             onClick={() => handleClick("send")}
+            disabled={loading}
           >
-            Send Request
+            {loading ? "Sending..." : "Add"}
           </button>
         )}
-
-        {type === "incoming" && (
-          <>
-            <button
-              className="btn btn-accept"
-              onClick={() => handleClick("accept")}
-            >
-              Accept
+        {type === "incoming" && 
+          (showDetails ? (
+            <>
+              <button
+                className="btn btn-accept"
+                onClick={() => handleClick("accept")}
+                disabled={loading}
+              >
+                {loading ? "Accepting..." : "Accept"}
+              </button>
+              <button
+                className="btn btn-reject"
+                onClick={() => handleClick("decline")}
+                disabled={loading}
+              >
+                {loading ? "Declining..." : "Decline"}
+              </button>
+            </>
+          ) : (
+            <button className="btn btn-disabled" disabled>
+              Pending
             </button>
+          ))}
+        {type === "outgoing" &&
+          (showDetails ? (
             <button
-              className="btn btn-reject"
-              onClick={() => handleClick("decline")}
+              className="btn btn-cancel"
+              onClick={() => handleClick("cancel")}
+              disabled={loading}
             >
-              Reject
+              {loading ? "Cancelling..." : "Cancel"}
             </button>
-          </>
-        )}
-
-        {type === "outgoing" && (
-          <button
-            className="btn btn-cancel"
-            onClick={() => handleClick("cancel")}
-          >
-            Cancel
-          </button>
-        )}
-
-        {type === "friend" && (
-          showRemove ? (
+          ) : (
+            <button className="btn btn-disabled" disabled>
+              Pending
+            </button>
+          ))}
+        {type === "friend" &&
+          (showDetails ? (
             <button
               className="btn btn-remove"
               onClick={() => handleClick("remove")}
+              disabled={loading}
             >
-              Remove
+              {loading ? "Removing..." : "Remove"}
             </button>
           ) : (
-            <button
-              className="btn btn-disabled"
-              disabled
-            >
+            <button className="btn btn-friends" disabled>
               Friends
             </button>
-          )
-        )}
+          ))}
       </div>
     </div>
   );

@@ -439,19 +439,19 @@ export default function RoundForm({ mode }) {
     clearMessage();
 
     if (!round.date || !round.course_id || !round.tee_id) {
-      showMessage("❌ Date, Course, and Tee are required.", "error");
+      showMessage("Date, Course, and Tee are required.", "error");
       return;
     }
 
     if (!isHBH && (round.score === null || round.score === "")) {
-      showMessage("❌ Score is required in Quick Score mode.", "error");
+      showMessage("Score is required in Quick Score mode.", "error");
       return;
     }
 
     if (isHBH) {
       const incomplete = holeScores.find((h) => h.score === null);
       if (incomplete) {
-        showMessage(`❌ Please enter a score for hole ${incomplete.hole_number}.`, "error");
+        showMessage(`Please enter a score for hole ${incomplete.hole_number}.`, "error");
         return;
       }
     }
@@ -473,7 +473,7 @@ export default function RoundForm({ mode }) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Error saving round");
 
-      showMessage(data.message || "✅ Round saved successfully!", "success");
+      showMessage(data.message || "Round saved successfully!", "success");
       setTimeout(() => navigate(origin), 1000);
     } catch (err) {
       console.error(err);

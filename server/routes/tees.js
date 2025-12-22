@@ -48,10 +48,13 @@ router.get("/:id", auth, async (req, res) => {
   try {
     const teeId = req.params.id;
     const tees = await query(`SELECT * FROM tees WHERE id = ?`, [teeId]);
+
     if (!tees.length) return res.status(404).json({ type: "error", message: "Tee not found" });
 
     const teesWithHoles = await attachHoles(tees);
-    res.json({ type: "success", tee: teesWithHoles[0] });
+
+    // Always return an array under 'tees'
+    res.json({ type: "success", tees: teesWithHoles });
   } catch (err) {
     console.error(err);
     res.status(500).json({ type: "error", message: "Database error", details: err });

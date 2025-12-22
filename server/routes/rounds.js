@@ -4,6 +4,7 @@ const router = express.Router();
 const db = require("../config/db");
 const util = require("util");
 const auth = require("../middleware/auth");
+const { recalcLeaderboard } = require("../utils/leaderboardUtils");
 
 // Promisify query
 const query = util.promisify(db.query).bind(db);
@@ -226,7 +227,7 @@ router.post("/", auth, async (req, res) => {
       await query(`INSERT INTO round_holes (round_id, hole_id, score, fir_hit, gir_hit, putts, penalties, created_date) VALUES ?`, [values]);
       await recalcRoundTotals(roundId, advanced_stats);
     }
-
+    await recalcLeaderboard(user_id);
     await query("COMMIT");
     res.status(201).json({ type: "success", message: "Round created", roundId });
   } catch (err) {
@@ -297,7 +298,7 @@ router.put("/:id", auth, async (req, res) => {
 
       await recalcRoundTotals(roundId, advanced_stats);
     }
-
+    await recalcLeaderboard(user_id);
     await query("COMMIT");
     res.json({ type: "success", message: "Round updated" });
   } catch (err) {
@@ -323,7 +324,7 @@ router.delete("/:id", auth, async (req, res) => {
       await query("ROLLBACK");
       return res.status(404).json({ type: "error", message: "Round not found or not authorized" });
     }
-
+    await recalcLeaderboard(userId);
     await query("COMMIT");
     res.json({ type: "success", message: "Round deleted" });
   } catch (err) {

@@ -46,7 +46,7 @@ html, body {
 .page-stack {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 8px;
 }
 
 /* ===========================
@@ -63,20 +63,38 @@ html, body {
   font-size: 1.2rem;
 }
 
+/* ===========================
+   Friend Page
+=========================== */
 .friend-card {
+  background-color: #fff;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+  box-sizing: border-box;
   display: flex;
   flex-direction: row;
   align-items: center;        /* vertically center username + buttons */
   justify-content: space-between; /* username left, buttons right */
   gap: 16px;
   padding: 12px;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+  width: 100%;
+  border-radius: 8px;
 }
 
 .friend-info {
-  display: block; /* simple block for username only */
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
-.friend-username {
+.friend-info img {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.friend-info .friend-name {
   font-weight: 600;
   font-size: 1rem;
 }
@@ -84,6 +102,84 @@ html, body {
 .friend-actions {
   display: flex;
   gap: 8px;
+}
+
+/* ===========================
+   Leaderboard
+=========================== */
+.sortable-header {
+  cursor: pointer;
+  color: #000;
+  font-weight: bold;
+  text-align: center;
+  padding: 4px 8px;
+  user-select: none;
+}
+
+.sortable-header.sorted {
+  color: #1a73e8;
+}
+
+.leaderboard-row {
+  display: grid;
+  grid-template-columns: 20px 2fr 1fr 1fr 1fr 1fr;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  border-bottom: 1px solid #eee;
+}
+
+.leaderboard-cell {
+  min-width: 0;
+}
+
+.centered {
+  text-align: center;
+}
+
+.left {
+  text-align: left;
+}
+
+.right {
+  text-align: right;
+}
+
+.leaderboard-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.name-header {
+  color: #000;
+  font-weight: bold;
+  text-align: left;
+}
+
+.avatar-name-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.name-stack {
+  display: flex;
+  flex-direction: row;
+  gap: 6px;
+  overflow: hidden;
+}
+
+.first-name,
+.last-name {
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+
+.leaderboard-cell.avatar-name {
+  min-width: 120px;
 }
 
 /* ===========================
@@ -129,10 +225,15 @@ html, body {
 }
 
 .btn-disabled {
-  background-color: #555;
+  background-color: #aaa;
   color: #fff;
   cursor: not-allowed;
-  opacity: 0.5;
+}
+
+.btn-friends {
+  background-color: #2da8fa;
+  color: #fff;
+  cursor: not-allowed;
 }
 
 .btn-edit,
@@ -214,19 +315,54 @@ textarea {
 }
 
 /* ===========================
-   Messages (success / error)
+   Messages (Centered Toast)
 =========================== */
-.message {
+.message-toast {
+  position: fixed;
+  top: 96px;
+  left: 50%;
+  transform: translateX(-50%);
+
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  padding: 14px 18px;
+  max-width: 90%;
   font-weight: 500;
-  text-align: center;
+  font-size: 1rem;
+
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+  z-index: 1000;
+
+  animation: toastFadeIn 0.2s ease-out;
 }
 
-.message.error {
+.message-toast.success {
+  background-color: #ecfdf5;
+  color: green;
+}
+
+.message-toast.error {
+  background-color: #fef2f2;
   color: red;
 }
 
-.message.success {
-  color: green;
+.message-emoji {
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
+@keyframes toastSlideDown {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
 }
 
 /* ===========================
@@ -371,6 +507,19 @@ select option {
 .login-card .btn-toggle {
   width: 100%;
   box-sizing: border-box;
+}
+
+.avatar-wrapper {
+  display: flex;
+  justify-content: center;
+}
+
+.avatar {
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #ccc;
 }
 
 /* ===========================
@@ -987,6 +1136,15 @@ select option {
 
   .tee-select-card select {
     font-size: 0.9rem;
+  }
+
+  .leaderboard-row {
+    grid-template-columns: 15px 3fr 1fr 1fr 1fr 1fr;
+  }
+
+  .name-stack {
+    flex-direction: column;
+    gap: 0;
   }
 
   .course-scorecard-left th,

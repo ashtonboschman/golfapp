@@ -37,14 +37,33 @@ router.post("/register", async (req, res) => {
       (err, result) => {
         if (err) {
           const field = getDuplicateField(err);
-          if (field === "username") return res.status(400).json({ message: "Username is already in use", type: "error" });
-          if (field === "email") return res.status(400).json({ message: "Email is already registered", type: "error" });
+          if (field === "username")
+            return res.status(400).json({ message: "Username is already in use", type: "error" });
+          if (field === "email")
+            return res.status(400).json({ message: "Email is already registered", type: "error" });
 
           return res.status(500).json({ message: "Failed to create user account", type: "error" });
         }
 
-        const token = jwt.sign({ id: result.insertId }, process.env.JWT_SECRET, { expiresIn: "7d" });
-        res.json({ user: { id: result.insertId, username, email }, token, type: "success" });
+        const userId = result.insertId;
+
+        db.query(
+          `INSERT INTO user_profiles (user_id) VALUES (?)`,
+          [userId],
+          (profileErr) => {
+            if (profileErr) {
+              return res.status(500).json({ message: "Failed to initialize user profile", type: "error" });
+            }
+
+            const token = jwt.sign({ id: userId }, process.env.JWT_SECRET, { expiresIn: "7d" });
+
+            res.json({
+              user: { id: userId, username, email },
+              token,
+              type: "success"
+            });
+          }
+        );
       }
     );
   } catch {
@@ -85,11 +104,57 @@ router.post("/login", async (req, res) => {
 // --------------------------------------------------
 router.get("/me", auth, (req, res) => {
   db.query(
-    `SELECT id, username, email, created_date FROM users WHERE id = ?`,
+    `SELECT
+      u.id,
+      u.username,
+      u.email,
+      u.created_date,
+
+      p.first_name,
+      p.last_name,
+      p.avatar_url,
+      p.bio,
+      p.gender,
+      p.default_tee,
+      p.favorite_course_id,
+      p.dashboard_visibility
+    FROM users u
+    JOIN user_profiles p ON p.user_id = u.id
+    WHERE u.id = ?`,
     [req.user.id],
     (err, results) => {
       if (err) return res.status(500).json({ message: "Failed to retrieve user profile", type: "error" });
       if (!results.length) return res.status(404).json({ message: "User not found", type: "error" });
+      res.json({ user: results[0], type: "success" });
+    }
+  );
+});
+
+// --------------------------------------------------
+// GET USER DETAILS (PUBLIC)
+// --------------------------------------------------
+router.get("/details/:id", (req, res) => {
+  const requestedUserId = req.params.id;
+
+  db.query(
+    `SELECT
+       u.id,
+       u.username,
+       p.first_name,
+       p.last_name,
+       p.avatar_url,
+       p.bio,
+       p.gender,
+       p.default_tee,
+       p.favorite_course_id
+     FROM users u
+     JOIN user_profiles p ON p.user_id = u.id
+     WHERE u.id = ?`,
+    [requestedUserId],
+    (err, results) => {
+      if (err) return res.status(500).json({ message: "Failed to retrieve user details", type: "error" });
+      if (!results.length) return res.status(404).json({ message: "User not found", type: "error" });
+
       res.json({ user: results[0], type: "success" });
     }
   );
@@ -134,6 +199,79 @@ router.put("/update", auth, (req, res) => {
       return res.status(404).json({ message: "User not found", type: "error" });
 
     res.json({ message: "User information updated successfully", type: "success" });
+  });
+});
+
+// --------------------------------------------------
+// UPDATE USER PROFILE
+// --------------------------------------------------
+router.put("/profile", auth, (req, res) => {
+  const {
+    first_name,
+    last_name,
+    avatar_url,
+    bio,
+    gender,
+    default_tee,
+    favorite_course_id,
+    dashboard_visibility
+  } = req.body;
+
+  const allowedGenders = ["male", "female", "unspecified"];
+  const allowedTees = ["blue", "white", "red", "gold", "black"];
+  const allowedVisibility = ["private", "friends", "public"];
+
+  if (gender && !allowedGenders.includes(gender)) {
+    return res.status(400).json({ message: "Invalid gender value", type: "error" });
+  }
+
+  if (default_tee && !allowedTees.includes(default_tee)) {
+    return res.status(400).json({ message: "Invalid default tee value", type: "error" });
+  }
+
+  if (dashboard_visibility && !allowedVisibility.includes(dashboard_visibility)) {
+    return res.status(400).json({ message: "Invalid dashboard visibility value", type: "error" });
+  }
+
+  const updates = [];
+  const values = [];
+
+  const fields = {
+    first_name,
+    last_name,
+    avatar_url,
+    bio,
+    gender,
+    default_tee,
+    favorite_course_id,
+    dashboard_visibility
+  };
+
+  for (const [key, value] of Object.entries(fields)) {
+    if (value !== undefined) {
+      updates.push(`${key} = ?`);
+      values.push(value);
+    }
+  }
+
+  if (!updates.length) {
+    return res.status(400).json({ message: "No profile fields provided", type: "error" });
+  }
+
+  values.push(req.user.id);
+
+  const sql = `
+    UPDATE user_profiles
+    SET ${updates.join(", ")}
+    WHERE user_id = ?
+  `;
+
+  db.query(sql, values, (err) => {
+    if (err) {
+      return res.status(500).json({ message: "Failed to update profile", type: "error" });
+    }
+
+    res.json({ message: "Profile updated successfully", type: "success" });
   });
 });
 
